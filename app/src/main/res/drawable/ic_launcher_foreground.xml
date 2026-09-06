@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- CORTEX / BRAIN TOP VIEW (VUE DE DESSUS) - BOLD BLACK OUTLINE & CONVOLUTIONS -->
+
+    <!-- Left Hemisphere Outer Contour -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 54,30 C 42,30 26,38 24,54 C 22,70 32,86 42,88 C 48,89 52,87 54,84"
+        android:strokeColor="#111827"
+        android:strokeWidth="3.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- Right Hemisphere Outer Contour -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 54,30 C 66,30 82,38 84,54 C 86,70 76,86 66,88 C 60,89 56,87 54,84"
+        android:strokeColor="#111827"
+        android:strokeWidth="3.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- Central Longitudinal Fissure (Scissure interhémisphérique) -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 54,30 L 54,84"
+        android:strokeColor="#111827"
+        android:strokeWidth="3.8"
+        android:strokeLineCap="round" />
+
+    <!-- Left Hemisphere Convolutions (Circonvolutions) -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 32,40 C 38,44 46,38 51,43"
+        android:strokeColor="#111827"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 26,50 C 34,48 42,56 51,53"
+        android:strokeColor="#111827"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 26,62 C 34,58 42,68 51,64"
+        android:strokeColor="#111827"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 29,72 C 36,68 44,78 51,74"
+        android:strokeColor="#111827"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 38,82 C 44,80 48,85 52,83"
+        android:strokeColor="#111827"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round" />
+
+    <!-- Right Hemisphere Convolutions (Circonvolutions) -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 76,40 C 70,44 62,38 57,43"
+        android:strokeColor="#111827"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 82,50 C 74,48 66,56 57,53"
+        android:strokeColor="#111827"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 82,62 C 74,58 66,68 57,64"
+        android:strokeColor="#111827"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 79,72 C 72,68 64,78 57,74"
+        android:strokeColor="#111827"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 70,82 C 64,80 60,85 56,83"
+        android:strokeColor="#111827"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round" />
+
+    <!-- 3 ONDES SINUSOÏDALES DE COULEURS DIFFÉRENTES AU DESSUS DU CORTEX -->
+
+    <!-- Wave 1: Cyan / Bright Blue (#00B0FF) -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 16,36 C 24,24 32,48 40,36 C 48,24 56,48 64,36 C 72,24 80,48 88,36 C 92,30 94,36 96,36"
+        android:strokeColor="#00B0FF"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round" />
+
+    <!-- Wave 2: Purple / Magenta (#D500F9) -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 14,46 C 22,34 30,58 38,46 C 46,34 54,58 62,46 C 70,34 78,58 86,46 C 91,39 94,46 96,46"
+        android:strokeColor="#D500F9"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round" />
+
+    <!-- Wave 3: Bright Orange (#FF6D00) -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M 16,56 C 24,44 32,68 40,56 C 48,44 56,68 64,56 C 72,44 80,68 88,56 C 92,50 95,56 96,56"
+        android:strokeColor="#FF6D00"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round" />
+
+</vector>
