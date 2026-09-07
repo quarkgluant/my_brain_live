@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -65,7 +66,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -423,6 +426,8 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         EegRecordingBar(uiState = uiState, viewModel = viewModel)
+
+                        MeditationAudioCard(uiState = uiState, viewModel = viewModel)
 
                         if (telemetry != null) {
                             Card(modifier = Modifier.fillMaxWidth()) {
@@ -1094,7 +1099,7 @@ fun ESenseMetricBox(title: String, value: Int, color: Color) {
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = if (value > 0) "$value / 100" else "--",
+            text = if (value >= 0) "$value / 100" else "--",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             color = color
@@ -1185,6 +1190,109 @@ fun ConnectionStatusBadge(connectionState: BluetoothConnectionState) {
             fontWeight = FontWeight.Bold,
             style = MaterialTheme.typography.labelMedium
         )
+    }
+}
+
+@Composable
+fun MeditationAudioCard(
+    uiState: EegUiState,
+    viewModel: EegViewModel
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = if (uiState.isMeditatingState && uiState.audioFeedbackEnabled)
+                Color(0xFF1B3A2A) else MaterialTheme.colorScheme.surfaceContainer
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.VolumeUp,
+                        contentDescription = null,
+                        tint = if (uiState.audioFeedbackEnabled)
+                            Color(0xFF7B1FA2) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Retour sonore de méditation",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                }
+                Switch(
+                    checked = uiState.audioFeedbackEnabled,
+                    onCheckedChange = { viewModel.toggleAudioFeedback() }
+                )
+            }
+
+            // Pourcentage actuel d'échantillons méditatifs sur les 30 dernières secondes
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = String.format(
+                        Locale.US,
+                        "Méditatif (30 s) : %d%% / seuil %d%%",
+                        uiState.meditationWindowPercent.toInt(),
+                        uiState.meditationPercentThreshold
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (uiState.isMeditatingState) {
+                    Text(
+                        text = "ÉTAT MÉDITATIF",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF4CAF50)
+                    )
+                }
+            }
+            LinearProgressIndicator(
+                progress = { uiState.meditationWindowPercent / 100f },
+                modifier = Modifier.fillMaxWidth(),
+                color = Color(0xFF9C27B0),
+            )
+
+            if (uiState.audioFeedbackEnabled) {
+                // Seuil eSense par échantillon
+                Text(
+                    text = "Niveau eSense méditatif : ≥ ${uiState.meditationSampleThreshold}/100",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Slider(
+                    value = uiState.meditationSampleThreshold.toFloat(),
+                    onValueChange = { viewModel.setMeditationSampleThreshold(it.toInt()) },
+                    valueRange = 20f..90f
+                )
+
+                // Pourcentage requis sur la fenêtre
+                Text(
+                    text = "Pourcentage requis sur 30 s : ≥ ${uiState.meditationPercentThreshold}%",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Slider(
+                    value = uiState.meditationPercentThreshold.toFloat(),
+                    onValueChange = { viewModel.setMeditationPercentThreshold(it.toInt()) },
+                    valueRange = 30f..100f
+                )
+            }
+        }
     }
 }
 

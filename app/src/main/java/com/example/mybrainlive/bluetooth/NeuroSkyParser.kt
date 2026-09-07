@@ -78,79 +78,95 @@ class NeuroSkyParser(private val deviceType: EegDeviceType) {
         var bands = currentTelemetry.eegBands
 
         while (idx < end) {
+            var excode = 0
+            while (idx < end && ((buf[idx].toInt() and 0xFF) == 0x55)) {
+                excode++
+                idx++
+            }
+            if (idx >= end) break
+
             val code = buf[idx].toInt() and 0xFF
             idx++
 
-            when (code) {
-                0x02 -> { // Poor Signal Quality
-                    if (idx < end) {
-                        poorSignal = buf[idx].toInt() and 0xFF
-                        idx++
-                    }
-                }
-                0x04 -> { // eSense Attention
-                    if (idx < end) {
-                        attention = buf[idx].toInt() and 0xFF
-                        idx++
-                    }
-                }
-                0x05 -> { // eSense Meditation
-                    if (idx < end) {
-                        meditation = buf[idx].toInt() and 0xFF
-                        idx++
-                    }
-                }
-                0x16 -> { // Blink Strength
-                    if (idx < end) {
-                        blink = buf[idx].toInt() and 0xFF
-                        idx++
-                    }
-                }
-                0x80 -> { // Raw Wave
-                    if (idx + 2 <= end) {
-                        val pLen = buf[idx].toInt() and 0xFF // Length byte (usually 2)
-                        idx++
-                        if (pLen == 2 && idx + 2 <= end) {
-                            rawWave = ((buf[idx].toInt() and 0xFF) shl 8) or (buf[idx + 1].toInt() and 0xFF)
-                            if (rawWave > 32767) rawWave -= 65536 // Convert unsigned to 16-bit signed
-                            idx += 2
+            if (excode == 0) {
+                when (code) {
+                    0x02 -> { // Poor Signal Quality
+                        if (idx < end) {
+                            poorSignal = buf[idx].toInt() and 0xFF
+                            idx++
                         }
                     }
-                }
-                0x83 -> { // ASIC EEG Power Bands (8 x 3-byte unsigned integers)
-                    if (idx < end) {
-                        val pLen = buf[idx].toInt() and 0xFF // Length byte (usually 24)
-                        idx++
-                        if (pLen >= 24 && idx + 24 <= end) {
-                            val delta = read24BitUnsigned(buf, idx)
-                            val theta = read24BitUnsigned(buf, idx + 3)
-                            val lowAlpha = read24BitUnsigned(buf, idx + 6)
-                            val highAlpha = read24BitUnsigned(buf, idx + 9)
-                            val lowBeta = read24BitUnsigned(buf, idx + 12)
-                            val highBeta = read24BitUnsigned(buf, idx + 15)
-                            val lowGamma = read24BitUnsigned(buf, idx + 18)
-                            val midGamma = read24BitUnsigned(buf, idx + 21)
+                    0x04 -> { // eSense Attention
+                        if (idx < end) {
+                            attention = buf[idx].toInt() and 0xFF
+                            idx++
+                        }
+                    }
+                    0x05 -> { // eSense Meditation
+                        if (idx < end) {
+                            meditation = buf[idx].toInt() and 0xFF
+                            idx++
+                        }
+                    }
+                    0x16 -> { // Blink Strength
+                        if (idx < end) {
+                            blink = buf[idx].toInt() and 0xFF
+                            idx++
+                        }
+                    }
+                    0x80 -> { // Raw Wave (vLength = 2, 16-bit signed int)
+                        if (idx < end) {
+                            val pLen = buf[idx].toInt() and 0xFF
+                            idx++
+                            if (pLen == 2 && (idx + pLen) <= end) {
+                                val high = buf[idx].toInt() and 0xFF
+                                val low = buf[idx + 1].toInt() and 0xFF
+                                var raw = (high shl 8) or low
+                                if (raw > 32767) raw -= 65536
+                                rawWave = raw
+                            }
+                            idx += pLen
+                        }
+                    }
+                    0x83 -> { // ASIC EEG Power Bands (vLength = 24, 8 x 3-byte unsigned int)
+                        if (idx < end) {
+                            val pLen = buf[idx].toInt() and 0xFF
+                            idx++
+                            if (pLen >= 24 && (idx + pLen) <= end) {
+                                val delta = read24BitUnsigned(buf, idx)
+                                val theta = read24BitUnsigned(buf, idx + 3)
+                                val lowAlpha = read24BitUnsigned(buf, idx + 6)
+                                val highAlpha = read24BitUnsigned(buf, idx + 9)
+                                val lowBeta = read24BitUnsigned(buf, idx + 12)
+                                val highBeta = read24BitUnsigned(buf, idx + 15)
+                                val lowGamma = read24BitUnsigned(buf, idx + 18)
+                                val midGamma = read24BitUnsigned(buf, idx + 21)
 
-                            bands = EegBands(
-                                delta = delta,
-                                theta = theta,
-                                lowAlpha = lowAlpha,
-                                highAlpha = highAlpha,
-                                lowBeta = lowBeta,
-                                highBeta = highBeta,
-                                lowGamma = lowGamma,
-                                midGamma = midGamma,
-                            )
-                            idx += 24
+                                bands = EegBands(
+                                    delta = delta,
+                                    theta = theta,
+                                    lowAlpha = lowAlpha,
+                                    highAlpha = highAlpha,
+                                    lowBeta = lowBeta,
+                                    highBeta = highBeta,
+                                    lowGamma = lowGamma,
+                                    midGamma = midGamma,
+                                )
+                            }
+                            idx += pLen
+                        }
+                    }
+                    else -> {
+                        if (code > 0x7F && idx < end) {
+                            val skipLen = buf[idx].toInt() and 0xFF
+                            idx += 1 + skipLen
                         }
                     }
                 }
-                else -> {
-                    // Skip unknown EXCODE bytes or standard values
-                    if (code > 0x7F && idx < end) {
-                        val skipLen = buf[idx].toInt() and 0xFF
-                        idx += 1 + skipLen
-                    }
+            } else {
+                if (code > 0x7F && idx < end) {
+                    val skipLen = buf[idx].toInt() and 0xFF
+                    idx += 1 + skipLen
                 }
             }
         }

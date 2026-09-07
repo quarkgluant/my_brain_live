@@ -38,6 +38,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 class EegBluetoothManager(private val context: Context) {
@@ -104,6 +105,7 @@ class EegBluetoothManager(private val context: Context) {
     private var connectionJob: Job? = null
     private var readJob: Job? = null
     private var throughputJob: Job? = null
+    private var bleConnectTimeoutJob: Job? = null
 
     private var isReceiverRegistered = false
     private var isBleScanning = false
@@ -188,9 +190,11 @@ class EegBluetoothManager(private val context: Context) {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             val devName = try { gatt.device.name ?: gatt.device.address } catch (_: Exception) { gatt.device.address }
             if (newState == BluetoothProfile.STATE_CONNECTED) {
+                bleConnectTimeoutJob?.cancel()
                 log("BLE GATT Connected to $devName. Discovering services...")
                 gatt.discoverServices()
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                bleConnectTimeoutJob?.cancel()
                 log("BLE GATT Disconnected from $devName.")
                 _connectionState.value = BluetoothConnectionState.Disconnected
                 cleanupGatt()
@@ -435,50 +439,94 @@ class EegBluetoothManager(private val context: Context) {
         _connectionState.value = BluetoothConnectionState.Connecting(deviceName)
         log("Initiating connection to ${devType.displayName}: $deviceName [$deviceAddress]...")
 
-        // Direct BLE GATT Connection if BrainLink or explicit LE Device
-        if (devType == EegDeviceType.BRAINLINK_LITE || device.type == BluetoothDevice.DEVICE_TYPE_LE) {
-            log("Attempting direct BLE GATT connection for BrainLink / LE device...")
+        // Direct BLE GATT Connection ONLY for BrainLink Lite
+        if (devType == EegDeviceType.BRAINLINK_LITE) {
+            log("Attempting direct BLE GATT connection for BrainLink...")
             connectBleGatt(device)
             return
         }
 
-        // SPP Connection attempt with BLE GATT fallback
+        // Standard SPP RFCOMM Connection
         connectionJob = scope.launch {
             try {
+                // Cancel active scanning and wait 400ms for Bluetooth hardware radio to settle
                 if (bluetoothAdapter.isDiscovering) {
                     bluetoothAdapter.cancelDiscovery()
+                }
+                delay(400.milliseconds)
+
+                // Auto-Bond check if not paired yet
+                if (device.bondState == BluetoothDevice.BOND_NONE) {
+                    log("Appareil $deviceName non appairé. Tentative d'appairage automatique (createBond)...")
+                    try {
+                        val bondStarted = device.createBond()
+                        if (bondStarted) {
+                            log("Demande d'appairage envoyée. Veuillez valider la popup Bluetooth sur le téléphone (PIN 0000).")
+                            var waitCount = 0
+                            while (device.bondState == BluetoothDevice.BOND_BONDING && waitCount < 15) {
+                                delay(300.milliseconds)
+                                waitCount++
+                            }
+                        }
+                    } catch (eBond: Exception) {
+                        log("Notice appairage: ${eBond.localizedMessage}")
+                    }
                 }
 
                 var tempSocket: BluetoothSocket? = null
                 var sppSuccess = false
 
-                try {
-                    tempSocket = device.createRfcommSocketToServiceRecord(SPP_UUID)
-                    tempSocket.connect()
-                    sppSuccess = true
-                    log("Connected via standard SPP RFCOMM socket.")
-                } catch (e: IOException) {
-                    log("Standard SPP connection failed (${e.localizedMessage}). Trying insecure socket...")
-                    tempSocket?.close()
+                // Try 2 connection attempts (Attempt 1: instant, Attempt 2 after 500ms delay)
+                for (attempt in 1..2) {
+                    if (sppSuccess) break
+                    if (attempt > 1) {
+                        log("Re-tentative de connexion SPP (essai $attempt/2)...")
+                        delay(500.milliseconds)
+                    }
 
+                    // Strategy 1: Reflection Channel 1 Direct (Evite le timeout SDP sur OnePlus / OxygenOS)
                     try {
-                        tempSocket = device.createInsecureRfcommSocketToServiceRecord(SPP_UUID)
+                        val method = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
+                        tempSocket = method.invoke(device, 1) as BluetoothSocket
                         tempSocket.connect()
                         sppSuccess = true
-                        log("Connected via fallback insecure SPP RFCOMM socket.")
-                    } catch (_: IOException) {
-                        log("Insecure SPP failed. Trying reflection channel 1...")
-                        tempSocket?.close()
+                        log("Connecté via canal RFCOMM 1 direct.")
+                    } catch (_: Exception) {
+                        try { tempSocket?.close() } catch (_: Exception) {}
+                        tempSocket = null
 
+                        // Strategy 2: Insecure SPP Socket
                         try {
-                            val method = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
-                            tempSocket = method.invoke(device, 1) as BluetoothSocket
+                            tempSocket = device.createInsecureRfcommSocketToServiceRecord(SPP_UUID)
                             tempSocket.connect()
                             sppSuccess = true
-                            log("Connected via reflection RFCOMM socket channel 1.")
-                        } catch (e3: Exception) {
-                            log("All SPP socket connection attempts failed (${e3.localizedMessage}). Trying BLE GATT fallback...")
-                            tempSocket?.close()
+                            log("Connecté via socket SPP non sécuré.")
+                        } catch (_: Exception) {
+                            try { tempSocket?.close() } catch (_: Exception) {}
+                            tempSocket = null
+
+                            // Strategy 3: Standard Secure SPP Socket
+                            try {
+                                tempSocket = device.createRfcommSocketToServiceRecord(SPP_UUID)
+                                tempSocket.connect()
+                                sppSuccess = true
+                                log("Connecté via socket SPP standard.")
+                            } catch (_: Exception) {
+                                try { tempSocket?.close() } catch (_: Exception) {}
+                                tempSocket = null
+
+                                // Strategy 4: Reflection Channel 2
+                                try {
+                                    val method2 = device.javaClass.getMethod("createRfcommSocket", Int::class.javaPrimitiveType)
+                                    tempSocket = method2.invoke(device, 2) as BluetoothSocket
+                                    tempSocket.connect()
+                                    sppSuccess = true
+                                    log("Connecté via canal RFCOMM 2.")
+                                } catch (_: Exception) {
+                                    try { tempSocket?.close() } catch (_: Exception) {}
+                                    tempSocket = null
+                                }
+                            }
                         }
                     }
                 }
@@ -494,7 +542,7 @@ class EegBluetoothManager(private val context: Context) {
                         connectionType = ConnectionType.SPP
                     )
 
-                    log("Connected via SPP to ${devType.displayName} ($deviceName) successfully.")
+                    log("Connecté en SPP à ${devType.displayName} ($deviceName) avec succès.")
 
                     if (devType == EegDeviceType.PLUX) {
                         startAcquisition()
@@ -504,19 +552,21 @@ class EegBluetoothManager(private val context: Context) {
                     startListeningForData(devType)
 
                 } else {
-                    // Fallback to BLE GATT
-                    log("SPP connection failed. Initiating BLE GATT fallback for $deviceName...")
+                    log("Échec des tentatives SPP pour $deviceName. Tentative de secours BLE GATT...")
                     withContext(Dispatchers.Main) {
                         connectBleGatt(device)
                     }
                 }
 
             } catch (e: Exception) {
-                Log.e(TAG, "Connection error", e)
-                log("Connection error: ${e.localizedMessage}. Attempting BLE GATT fallback...")
+                Log.e(TAG, "Connection failed", e)
+                log("Erreur de connexion SPP : ${e.localizedMessage}")
                 withContext(Dispatchers.Main) {
-                    connectBleGatt(device)
+                    _connectionState.value = BluetoothConnectionState.Error(
+                        e.localizedMessage ?: "Échec de connexion à $deviceName"
+                    )
                 }
+                cleanupSocket()
             }
         }
     }
@@ -526,7 +576,23 @@ class EegBluetoothManager(private val context: Context) {
         try {
             cleanupGatt()
             log("Connecting GATT to ${device.name ?: device.address}...")
-            bluetoothGatt = device.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+            val gatt = device.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+            bluetoothGatt = gatt
+
+            // Watchdog : si aucun callback GATT après 12 s, on abandonne proprement
+            bleConnectTimeoutJob?.cancel()
+            bleConnectTimeoutJob = scope.launch {
+                delay(12_000)
+                if (bluetoothGatt === gatt &&
+                    _connectionState.value is BluetoothConnectionState.Connecting
+                ) {
+                    log("BLE GATT connection timed out after 12 s.")
+                    cleanupGatt()
+                    _connectionState.value = BluetoothConnectionState.Error(
+                        "Délai de connexion BLE dépassé. L'appareil ne répond pas en Bluetooth Low Energy."
+                    )
+                }
+            }
         } catch (e: Exception) {
             log("BLE GATT connection exception: ${e.localizedMessage}")
             _connectionState.value = BluetoothConnectionState.Error("BLE GATT error: ${e.localizedMessage}")
@@ -644,6 +710,7 @@ class EegBluetoothManager(private val context: Context) {
         connectionJob?.cancel()
         readJob?.cancel()
         throughputJob?.cancel()
+        bleConnectTimeoutJob?.cancel()
 
         log("Disconnecting device...")
         if (currentConnectedDeviceType == EegDeviceType.PLUX) {
