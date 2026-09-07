@@ -25,11 +25,16 @@ enum class EegDeviceType(
                 lower.contains("tgam") ||
                 lower.contains("mw2") ||
                 lower.contains("mw-") ||
-                lower.contains("mw") -> MINDWAVE_MOBILE
+                lower.contains("mw") ||
+                lower.contains("eeg") ||
+                lower.contains("wave") ||
+                lower.contains("neuro") ||
+                lower.contains("headset") -> MINDWAVE_MOBILE
 
                 lower.contains("brainlink") ||
                 lower.contains("macrotellect") ||
                 lower.contains("bl_") ||
+                lower.contains("brain") ||
                 lower.contains("lite") -> BRAINLINK_LITE
 
                 else -> GENERIC

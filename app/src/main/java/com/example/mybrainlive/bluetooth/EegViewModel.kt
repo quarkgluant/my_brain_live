@@ -27,6 +27,8 @@ data class EegUiState(
     val selectedFilter: EegDeviceType? = null,
     val expandedDeviceAddress: String? = null,
     val telemetryHistory: List<EegTelemetry> = emptyList(),
+    val rawWaveHistory: List<Int> = emptyList(),
+    val eSenseHistory: List<EegTelemetry> = emptyList(),
     val isRecording: Boolean = false,
     val recordingStartTime: Long = 0L,
     val recordedSamples: List<EegTelemetry> = emptyList(),
@@ -119,12 +121,29 @@ class EegViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             bluetoothManager.latestTelemetry.collect { telemetry ->
                 val history = _uiState.value.telemetryHistory.toMutableList()
+                val rawHistory = _uiState.value.rawWaveHistory.toMutableList()
+                val eSenseList = _uiState.value.eSenseHistory.toMutableList()
                 val recorded = _uiState.value.recordedSamples.toMutableList()
 
                 if (telemetry != null) {
                     history.add(telemetry)
                     if (history.size > 120) {
                         history.removeAt(0)
+                    }
+
+                    // Raw Wave Oscilloscope history
+                    rawHistory.add(telemetry.rawWave)
+                    if (rawHistory.size > 150) {
+                        rawHistory.removeAt(0)
+                    }
+
+                    // eSense Attention & Meditation timeline history (sampled ~every 800ms)
+                    val lastTime = eSenseList.lastOrNull()?.timestamp ?: 0L
+                    if ((telemetry.timestamp - lastTime >= 800L) || eSenseList.isEmpty()) {
+                        eSenseList.add(telemetry)
+                        if (eSenseList.size > 120) {
+                            eSenseList.removeAt(0)
+                        }
                     }
 
                     if (_uiState.value.isRecording) {
@@ -135,6 +154,8 @@ class EegViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.value = _uiState.value.copy(
                     latestTelemetry = telemetry,
                     telemetryHistory = history,
+                    rawWaveHistory = rawHistory,
+                    eSenseHistory = eSenseList,
                     recordedSamples = recorded,
                     meditationWindowPercent = meditationFeedback.first,
                     isMeditatingState = meditationFeedback.second,
@@ -304,9 +325,19 @@ class EegViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun exportSession(context: Context, format: ExportFormat) {
+        val listToExport = if (_uiState.value.recordedSamples.isNotEmpty()) {
+            _uiState.value.recordedSamples
+        } else if (_uiState.value.telemetryHistory.isNotEmpty()) {
+            _uiState.value.telemetryHistory
+        } else if (_uiState.value.latestTelemetry != null) {
+            listOfNotNull(_uiState.value.latestTelemetry)
+        } else {
+            emptyList()
+        }
+
         val file = EegExporter.exportSession(
             context = context,
-            telemetryList = _uiState.value.recordedSamples,
+            telemetryList = listToExport,
             format = format
         )
         if (file != null) {
@@ -314,7 +345,7 @@ class EegViewModel(application: Application) : AndroidViewModel(application) {
                 lastExportedFile = file,
                 lastExportedFormat = format
             )
-            addLog("Fichier exporté avec succès: ${file.name}")
+            addLog("Fichier ${format.extension.uppercase()} exporté (${listToExport.size} échantillons) : ${file.name}")
         } else {
             addLog("Échec de l'exportation du fichier.")
         }

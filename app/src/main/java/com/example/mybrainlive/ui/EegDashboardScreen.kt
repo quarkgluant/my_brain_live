@@ -16,8 +16,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,6 +34,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.BluetoothSearching
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.ShowChart
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothConnected
 import androidx.compose.material.icons.filled.Clear
@@ -250,16 +253,15 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // Filter Chips & Scan Controls
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer
-                            ),
+                        // Filter Chips & Scan Controls (Sleek Compact Bar)
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceContainer,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(
-                                modifier = Modifier.padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -267,14 +269,24 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "Recherche Appareils",
+                                        text = "Casques & Capteurs",
                                         fontWeight = FontWeight.Bold,
-                                        style = MaterialTheme.typography.titleSmall
+                                        style = MaterialTheme.typography.titleMedium
                                     )
 
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        IconButton(onClick = { viewModel.refreshPairedDevices() }) {
-                                            Icon(Icons.Default.Refresh, contentDescription = "Rafraîchir")
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        IconButton(
+                                            onClick = { viewModel.refreshPairedDevices() },
+                                            modifier = Modifier.size(36.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Refresh,
+                                                contentDescription = "Rafraîchir",
+                                                modifier = Modifier.size(20.dp)
+                                            )
                                         }
 
                                         if (uiState.connectionState is BluetoothConnectionState.Scanning) {
@@ -282,28 +294,30 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                                                 onClick = { viewModel.stopScan() },
                                                 colors = ButtonDefaults.buttonColors(
                                                     containerColor = MaterialTheme.colorScheme.secondary
-                                                )
+                                                ),
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                                             ) {
                                                 CircularProgressIndicator(
-                                                    modifier = Modifier.size(16.dp),
+                                                    modifier = Modifier.size(14.dp),
                                                     color = MaterialTheme.colorScheme.onSecondary,
                                                     strokeWidth = 2.dp
                                                 )
                                                 Spacer(modifier = Modifier.width(6.dp))
-                                                Text("Stop")
+                                                Text("Arrêter", fontSize = 12.sp, maxLines = 1)
                                             }
                                         } else {
                                             Button(
                                                 onClick = { viewModel.startScan() },
-                                                enabled = uiState.isPermissionGranted
+                                                enabled = uiState.isPermissionGranted,
+                                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.AutoMirrored.Filled.BluetoothSearching,
                                                     contentDescription = null,
-                                                    modifier = Modifier.size(18.dp)
+                                                    modifier = Modifier.size(16.dp)
                                                 )
                                                 Spacer(modifier = Modifier.width(6.dp))
-                                                Text("Scanner")
+                                                Text("Scanner", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                                             }
                                         }
                                     }
@@ -319,28 +333,32 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                                         imageVector = Icons.Default.FilterList,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(16.dp)
                                     )
 
                                     FilterChip(
                                         selected = uiState.selectedFilter == null,
                                         onClick = { viewModel.setDeviceFilter(null) },
-                                        label = { Text("Tous") }
+                                        label = { Text("Tous", fontSize = 11.sp) },
+                                        modifier = Modifier.height(28.dp)
                                     )
                                     FilterChip(
                                         selected = uiState.selectedFilter == EegDeviceType.PLUX,
                                         onClick = { viewModel.setDeviceFilter(EegDeviceType.PLUX) },
-                                        label = { Text("PLUX") }
+                                        label = { Text("PLUX", fontSize = 11.sp) },
+                                        modifier = Modifier.height(28.dp)
                                     )
                                     FilterChip(
                                         selected = uiState.selectedFilter == EegDeviceType.MINDWAVE_MOBILE,
                                         onClick = { viewModel.setDeviceFilter(EegDeviceType.MINDWAVE_MOBILE) },
-                                        label = { Text("MindWave") }
+                                        label = { Text("MindWave", fontSize = 11.sp) },
+                                        modifier = Modifier.height(28.dp)
                                     )
                                     FilterChip(
                                         selected = uiState.selectedFilter == EegDeviceType.BRAINLINK_LITE,
                                         onClick = { viewModel.setDeviceFilter(EegDeviceType.BRAINLINK_LITE) },
-                                        label = { Text("BrainLink") }
+                                        label = { Text("BrainLink", fontSize = 11.sp) },
+                                        modifier = Modifier.height(28.dp)
                                     )
                                 }
                             }
@@ -419,86 +437,92 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                 1 -> {
                     // TAB 1: PAGE TÉLÉMESURE & METRIQUES EEG
                     val telemetry = uiState.latestTelemetry
-                    Column(
+                    LazyColumn(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(vertical = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        EegRecordingBar(uiState = uiState, viewModel = viewModel)
+                        item {
+                            EegRecordingBar(uiState = uiState, viewModel = viewModel)
+                        }
 
-                        MeditationAudioCard(uiState = uiState, viewModel = viewModel)
+                        item {
+                            MeditationAudioCard(uiState = uiState, viewModel = viewModel)
+                        }
 
-                        if (telemetry != null) {
-                            Card(modifier = Modifier.fillMaxWidth()) {
-                                Column(
-                                    modifier = Modifier.padding(16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
+                        item {
+                            if (telemetry != null) {
+                                Card(modifier = Modifier.fillMaxWidth()) {
+                                    Column(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
-                                        Text(
-                                            text = "Ondes Cérébrales en Direct",
-                                            fontWeight = FontWeight.Bold,
-                                            style = MaterialTheme.typography.titleMedium
-                                        )
-                                        DeviceTypeBadge(deviceType = telemetry.deviceType)
-                                    }
-
-                                    if ((telemetry.deviceType == EegDeviceType.MINDWAVE_MOBILE) || (telemetry.deviceType == EegDeviceType.BRAINLINK_LITE)) {
                                         Row(
                                             modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceEvenly
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            ESenseMetricBox(
-                                                title = "Attention (Focus)",
-                                                value = telemetry.attention,
-                                                color = Color(0xFF1976D2)
+                                            Text(
+                                                text = "Ondes Cérébrales en Direct",
+                                                fontWeight = FontWeight.Bold,
+                                                style = MaterialTheme.typography.titleMedium
                                             )
-                                            ESenseMetricBox(
-                                                title = "Méditation (Calme)",
-                                                value = telemetry.meditation,
-                                                color = Color(0xFF7B1FA2)
-                                            )
+                                            DeviceTypeBadge(deviceType = telemetry.deviceType)
                                         }
 
-                                        EegBandRow("Delta (0.5-2.75 Hz - Sommeil/Inconscient)", telemetry.eegBands.delta, telemetry.eegBands.totalPower, Color(0xFF311B92))
-                                        EegBandRow("Theta (3.5-6.75 Hz - Rêve/Créativité)", telemetry.eegBands.theta, telemetry.eegBands.totalPower, Color(0xFF4A148C))
-                                        EegBandRow("Low Alpha (7.5-9.25 Hz - Relaxation)", telemetry.eegBands.lowAlpha, telemetry.eegBands.totalPower, Color(0xFF006064))
-                                        EegBandRow("High Alpha (10-11.75 Hz - Calme Lucide)", telemetry.eegBands.highAlpha, telemetry.eegBands.totalPower, Color(0xFF004D40))
-                                        EegBandRow("Low Beta (13-16.75 Hz - Reflexion)", telemetry.eegBands.lowBeta, telemetry.eegBands.totalPower, Color(0xFF1B5E20))
-                                        EegBandRow("High Beta (18-29.75 Hz - Focus/Anxiété)", telemetry.eegBands.highBeta, telemetry.eegBands.totalPower, Color(0xFFE65100))
-                                        EegBandRow("Low Gamma (31-39.75 Hz - Cognition)", telemetry.eegBands.lowGamma, telemetry.eegBands.totalPower, Color(0xFFBF360C))
-                                        EegBandRow("Mid Gamma (41-49.75 Hz - Multi-Reflexe)", telemetry.eegBands.midGamma, telemetry.eegBands.totalPower, Color(0xFF880E4F))
-
-                                    } else if (telemetry.deviceType == EegDeviceType.PLUX) {
-                                        Text("Canaux Analogiques PLUX:", fontWeight = FontWeight.Bold)
-                                        telemetry.pluxChannels.forEachIndexed { idx, val16 ->
+                                        if (telemetry.deviceType != EegDeviceType.PLUX) {
                                             Row(
                                                 modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween
+                                                horizontalArrangement = Arrangement.SpaceEvenly
                                             ) {
-                                                Text("Canal A${idx + 1}")
-                                                Text("$val16 raw", fontFamily = FontFamily.Monospace)
+                                                ESenseMetricBox(
+                                                    title = "Attention (Focus)",
+                                                    value = telemetry.attention,
+                                                    color = Color(0xFF1976D2)
+                                                )
+                                                ESenseMetricBox(
+                                                    title = "Méditation (Calme)",
+                                                    value = telemetry.meditation,
+                                                    color = Color(0xFF7B1FA2)
+                                                )
+                                            }
+
+                                            EegBandRow("Delta (0.5-2.75 Hz - Sommeil/Inconscient)", telemetry.eegBands.delta, telemetry.eegBands.totalPower, Color(0xFF311B92))
+                                            EegBandRow("Theta (3.5-6.75 Hz - Rêve/Créativité)", telemetry.eegBands.theta, telemetry.eegBands.totalPower, Color(0xFF4A148C))
+                                            EegBandRow("Low Alpha (7.5-9.25 Hz - Relaxation)", telemetry.eegBands.lowAlpha, telemetry.eegBands.totalPower, Color(0xFF006064))
+                                            EegBandRow("High Alpha (10-11.75 Hz - Calme Lucide)", telemetry.eegBands.highAlpha, telemetry.eegBands.totalPower, Color(0xFF004D40))
+                                            EegBandRow("Low Beta (13-16.75 Hz - Reflexion)", telemetry.eegBands.lowBeta, telemetry.eegBands.totalPower, Color(0xFF1B5E20))
+                                            EegBandRow("High Beta (18-29.75 Hz - Focus/Anxiété)", telemetry.eegBands.highBeta, telemetry.eegBands.totalPower, Color(0xFFE65100))
+                                            EegBandRow("Low Gamma (31-39.75 Hz - Cognition)", telemetry.eegBands.lowGamma, telemetry.eegBands.totalPower, Color(0xFFBF360C))
+                                            EegBandRow("Mid Gamma (41-49.75 Hz - Multi-Reflexe)", telemetry.eegBands.midGamma, telemetry.eegBands.totalPower, Color(0xFF880E4F))
+
+                                        } else {
+                                            Text("Canaux Analogiques PLUX:", fontWeight = FontWeight.Bold)
+                                            telemetry.pluxChannels.forEachIndexed { idx, val16 ->
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceBetween
+                                                ) {
+                                                    Text("Canal A${idx + 1}")
+                                                    Text("$val16 raw", fontFamily = FontFamily.Monospace)
+                                                }
                                             }
                                         }
                                     }
                                 }
-                            }
-                        } else {
-                            Card(modifier = Modifier.fillMaxWidth()) {
-                                Box(
-                                    modifier = Modifier.padding(32.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "Aucune donnée de télémesure active. Rendez-vous dans 'Connexion BT' pour sélectionner votre casque.",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                            } else {
+                                Card(modifier = Modifier.fillMaxWidth()) {
+                                    Box(
+                                        modifier = Modifier.padding(32.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "Aucune donnée de télémesure active. Rendez-vous dans 'Connexion BT' pour sélectionner votre casque.",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -552,7 +576,7 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                                         }
                                     }
 
-                                    RawWaveformChart(history = uiState.telemetryHistory)
+                                    RawWaveformChart(rawHistory = uiState.rawWaveHistory)
                                 }
                             }
                         }
@@ -565,7 +589,7 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Text(
-                                        text = "Évolution Temporelle Attention & Méditation",
+                                        text = "Évolution Temporelle Attention & Méditation (2 min)",
                                         fontWeight = FontWeight.Bold,
                                         style = MaterialTheme.typography.titleMedium
                                     )
@@ -597,7 +621,7 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                                         }
                                     }
 
-                                    AttentionMeditationChart(history = uiState.telemetryHistory)
+                                    AttentionMeditationChart(history = uiState.eSenseHistory)
                                 }
                             }
                         }
@@ -627,8 +651,8 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
 }
 
 @Composable
-fun RawWaveformChart(history: List<EegTelemetry>) {
-    val points = history.map { it.rawWave.toFloat() }
+fun RawWaveformChart(rawHistory: List<Int>) {
+    val points = rawHistory.map { it.toFloat() }
 
     Surface(
         shape = RoundedCornerShape(8.dp),
@@ -696,35 +720,45 @@ fun AttentionMeditationChart(history: List<EegTelemetry>) {
             }
 
             // Draw Attention Line (Blue)
-            if (attPoints.size >= 2) {
-                val dx = width / (attPoints.size - 1).coerceAtLeast(1)
+            if (attPoints.isNotEmpty()) {
+                val dx = if (attPoints.size > 1) width / (attPoints.size - 1) else width
                 val attPath = Path()
                 attPoints.forEachIndexed { i, att ->
                     val x = i * dx
                     val y = height - ((att / 100f) * height)
                     if (i == 0) attPath.moveTo(x, y) else attPath.lineTo(x, y)
                 }
-                drawPath(
-                    path = attPath,
-                    color = Color(0xFF1976D2),
-                    style = Stroke(width = 5f)
-                )
+                if (attPoints.size == 1) {
+                    val y = height - ((attPoints[0] / 100f) * height)
+                    drawCircle(Color(0xFF1976D2), radius = 6f, center = Offset(width / 2f, y))
+                } else {
+                    drawPath(
+                        path = attPath,
+                        color = Color(0xFF1976D2),
+                        style = Stroke(width = 5f)
+                    )
+                }
             }
 
             // Draw Meditation Line (Purple)
-            if (medPoints.size >= 2) {
-                val dx = width / (medPoints.size - 1).coerceAtLeast(1)
+            if (medPoints.isNotEmpty()) {
+                val dx = if (medPoints.size > 1) width / (medPoints.size - 1) else width
                 val medPath = Path()
                 medPoints.forEachIndexed { i, med ->
                     val x = i * dx
                     val y = height - ((med / 100f) * height)
                     if (i == 0) medPath.moveTo(x, y) else medPath.lineTo(x, y)
                 }
-                drawPath(
-                    path = medPath,
-                    color = Color(0xFF9C27B0),
-                    style = Stroke(width = 5f)
-                )
+                if (medPoints.size == 1) {
+                    val y = height - ((medPoints[0] / 100f) * height)
+                    drawCircle(Color(0xFF9C27B0), radius = 6f, center = Offset(width / 2f, y))
+                } else {
+                    drawPath(
+                        path = medPath,
+                        color = Color(0xFF9C27B0),
+                        style = Stroke(width = 5f)
+                    )
+                }
             }
         }
     }
@@ -733,17 +767,17 @@ fun AttentionMeditationChart(history: List<EegTelemetry>) {
 @Composable
 fun BrainwaveSpectrumChart(telemetry: EegTelemetry?) {
     val bands = telemetry?.eegBands
-    val total = bands?.totalPower ?: 1
+    val total = bands?.totalPower ?: 0
 
     val items = listOf(
-        Triple("Delta", bands?.delta ?: 0, Color(0xFF311B92)),
-        Triple("Theta", bands?.theta ?: 0, Color(0xFF4A148C)),
-        Triple("L-Alpha", bands?.lowAlpha ?: 0, Color(0xFF006064)),
-        Triple("H-Alpha", bands?.highAlpha ?: 0, Color(0xFF004D40)),
-        Triple("L-Beta", bands?.lowBeta ?: 0, Color(0xFF1B5E20)),
-        Triple("H-Beta", bands?.highBeta ?: 0, Color(0xFFE65100)),
-        Triple("L-Gamma", bands?.lowGamma ?: 0, Color(0xFFBF360C)),
-        Triple("M-Gamma", bands?.midGamma ?: 0, Color(0xFF880E4F))
+        Triple("Delta", bands?.delta ?: 0, Color(0xFF7C4DFF)),
+        Triple("Theta", bands?.theta ?: 0, Color(0xFFAB47BC)),
+        Triple("L-Alpha", bands?.lowAlpha ?: 0, Color(0xFF00E5FF)),
+        Triple("H-Alpha", bands?.highAlpha ?: 0, Color(0xFF1DE9B6)),
+        Triple("L-Beta", bands?.lowBeta ?: 0, Color(0xFF76FF03)),
+        Triple("H-Beta", bands?.highBeta ?: 0, Color(0xFFFFC400)),
+        Triple("L-Gamma", bands?.lowGamma ?: 0, Color(0xFFFF9100)),
+        Triple("M-Gamma", bands?.midGamma ?: 0, Color(0xFFFF1744))
     )
 
     Surface(
@@ -751,7 +785,7 @@ fun BrainwaveSpectrumChart(telemetry: EegTelemetry?) {
         color = Color(0xFF0F172A),
         modifier = Modifier
             .fillMaxWidth()
-            .height(160.dp)
+            .height(175.dp)
     ) {
         Column(
             modifier = Modifier
@@ -759,25 +793,36 @@ fun BrainwaveSpectrumChart(telemetry: EegTelemetry?) {
                 .padding(10.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
+            // Bars container with fixed height
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),
+                    .height(125.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.Bottom
             ) {
                 items.forEach { (_, valInt, color) ->
-                    val pct = if (total > 0) (valInt.toFloat() / total.toFloat()).coerceIn(0.05f, 1f) else 0.05f
+                    val pct = if (total > 0) (valInt.toFloat() / total.toFloat()).coerceIn(0.08f, 1f) else 0.08f
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Bottom,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     ) {
+                        Text(
+                            text = if (total > 0) "${(pct * 100).toInt()}%" else "-",
+                            fontSize = 9.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            color = color
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
                         Box(
                             modifier = Modifier
                                 .width(18.dp)
-                                .fillMaxSize(fraction = pct)
+                                .fillMaxHeight(fraction = pct)
                                 .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
                                 .background(color)
                         )
@@ -785,17 +830,19 @@ fun BrainwaveSpectrumChart(telemetry: EegTelemetry?) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
+            // X-Axis Labels
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                items.forEach { (name, _, _) ->
+                items.forEach { (name, _, color) ->
                     Text(
                         text = name,
                         fontSize = 9.sp,
-                        color = Color.LightGray,
+                        fontWeight = FontWeight.Bold,
+                        color = color,
                         fontFamily = FontFamily.Monospace
                     )
                 }
@@ -918,53 +965,64 @@ fun ExpandableDeviceCard(
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (isConnected) {
-                            Button(
-                                onClick = { viewModel.startAcquisition() },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF2E7D32)
-                                )
-                            ) {
-                                Icon(Icons.Default.PlayArrow, contentDescription = null)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Démarrer (0x01)", fontSize = 12.sp)
-                            }
+                            if (device.deviceType == EegDeviceType.PLUX) {
+                                Button(
+                                    onClick = { viewModel.startAcquisition() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Démarrer", fontSize = 12.sp, maxLines = 1)
+                                }
 
-                            OutlinedButton(
-                                onClick = { viewModel.stopAcquisition() },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(Icons.Default.Stop, contentDescription = null)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Arrêter (0x00)", fontSize = 12.sp)
+                                OutlinedButton(
+                                    onClick = { viewModel.stopAcquisition() },
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Arrêter", fontSize = 12.sp, maxLines = 1)
+                                }
                             }
 
                             Button(
                                 onClick = { viewModel.disconnect() },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.error
-                                )
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                                modifier = if (device.deviceType == EegDeviceType.PLUX) Modifier else Modifier.fillMaxWidth()
                             ) {
-                                Text("Déconnecter", fontSize = 12.sp)
+                                Icon(Icons.Default.BluetoothConnected, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Déconnecter", fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                             }
                         } else {
                             Button(
                                 onClick = { viewModel.connect(device.address) },
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                             ) {
-                                Icon(Icons.Default.BluetoothConnected, contentDescription = null)
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Connecter à ${device.name}")
+                                Icon(Icons.Default.Bluetooth, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Se connecter à ${device.name}",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
                             }
                         }
                     }
 
                     if (isConnected && uiState.latestTelemetry != null) {
                         val telemetry = uiState.latestTelemetry
-                        if (device.deviceType == EegDeviceType.MINDWAVE_MOBILE || device.deviceType == EegDeviceType.BRAINLINK_LITE) {
+                        if (device.deviceType != EegDeviceType.PLUX) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -1216,7 +1274,7 @@ fun MeditationAudioCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = Icons.Default.VolumeUp,
+                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                         contentDescription = null,
                         tint = if (uiState.audioFeedbackEnabled)
                             Color(0xFF7B1FA2) else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1352,7 +1410,7 @@ fun EegRecordingBar(
             } else {
                 Button(
                     onClick = { viewModel.startRecording() },
-                    enabled = uiState.connectionState is BluetoothConnectionState.Connected
+                    enabled = uiState.connectionState is BluetoothConnectionState.Connected || uiState.latestTelemetry != null || uiState.telemetryHistory.isNotEmpty()
                 ) {
                     Icon(Icons.Default.FiberManualRecord, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Red)
                     Spacer(modifier = Modifier.width(4.dp))
@@ -1381,9 +1439,10 @@ fun EegExportDialog(
             }
         },
         text = {
+            val sampleCount = if (uiState.recordedSamples.isNotEmpty()) uiState.recordedSamples.size else uiState.telemetryHistory.size
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    text = "Session enregistrée : ${uiState.recordedSamples.size} échantillons capturés.",
+                    text = "Session enregistrée : $sampleCount échantillons prêts.",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -1452,7 +1511,7 @@ fun EegExportDialog(
                                 fontSize = 11.sp
                             )
                             Text(
-                                text = uiState.lastExportedFile?.name ?: "",
+                                text = uiState.lastExportedFile?.name.orEmpty(),
                                 color = Color.White,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 11.sp

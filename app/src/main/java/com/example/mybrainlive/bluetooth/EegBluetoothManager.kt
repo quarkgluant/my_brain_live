@@ -623,18 +623,10 @@ class EegBluetoothManager(private val context: Context) {
                             }
                             EegDeviceType.MINDWAVE_MOBILE,
                             EegDeviceType.BRAINLINK_LITE,
+                            EegDeviceType.GENERIC,
                             -> {
                                 val telemetry = parser.parseBytes(buffer, bytesRead)
                                 _latestTelemetry.value = telemetry
-                            }
-                            EegDeviceType.GENERIC -> {
-                                val telemetry = parser.parseBytes(buffer, bytesRead)
-                                if (telemetry.signalQuality < 200 || telemetry.attention > 0) {
-                                    _latestTelemetry.value = telemetry
-                                } else {
-                                    val pluxFrame = PluxFrame.parse(buffer, bytesRead)
-                                    _latestTelemetry.value = pluxFrame.toTelemetry().copy(deviceType = EegDeviceType.GENERIC)
-                                }
                             }
                         }
                     }
