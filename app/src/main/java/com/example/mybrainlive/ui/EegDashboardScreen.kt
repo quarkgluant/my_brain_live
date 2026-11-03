@@ -177,25 +177,25 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                     selected = activeScreenTab == 0,
                     onClick = { activeScreenTab = 0 },
                     icon = { Icon(Icons.Default.Bluetooth, contentDescription = null) },
-                    label = { Text("Connexion BT") }
+                    label = { Text("Connexion", maxLines = 1, softWrap = false) }
                 )
                 NavigationBarItem(
                     selected = activeScreenTab == 1,
                     onClick = { activeScreenTab = 1 },
                     icon = { Icon(Icons.Default.Psychology, contentDescription = null) },
-                    label = { Text("Ondes EEG") }
+                    label = { Text("Ondes EEG", maxLines = 1, softWrap = false) }
                 )
                 NavigationBarItem(
                     selected = activeScreenTab == 2,
                     onClick = { activeScreenTab = 2 },
                     icon = { Icon(Icons.AutoMirrored.Filled.ShowChart, contentDescription = null) },
-                    label = { Text("Graphiques") }
+                    label = { Text("Graphiques", maxLines = 1, softWrap = false) }
                 )
                 NavigationBarItem(
                     selected = activeScreenTab == 3,
                     onClick = { activeScreenTab = 3 },
                     icon = { Icon(Icons.Default.Psychology, contentDescription = null) },
-                    label = { Text("IA Local") }
+                    label = { Text("IA", maxLines = 1, softWrap = false) }
                 )
             }
         }
