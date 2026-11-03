@@ -927,16 +927,13 @@ fun ExpandableDeviceCard(
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = device.name,
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            DeviceTypeBadge(deviceType = device.deviceType)
-                        }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = device.name,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.bodyLarge,
+                            maxLines = 1
+                        )
                         Text(
                             text = device.address,
                             style = MaterialTheme.typography.bodySmall,
@@ -946,13 +943,19 @@ fun ExpandableDeviceCard(
                     }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    DeviceTypeBadge(deviceType = device.deviceType)
+
                     if (isConnecting) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
                             strokeWidth = 2.dp
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
                     } else if (isConnected) {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
@@ -966,7 +969,6 @@ fun ExpandableDeviceCard(
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
                     }
 
                     Icon(
