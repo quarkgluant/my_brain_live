@@ -140,7 +140,8 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                                 text = when (activeScreenTab) {
                                     0 -> "Connexion Casques & Capteurs BT"
                                     1 -> "Spectre & Métriques EEG"
-                                    else -> "Visualisation Graphique Temporel"
+                                    2 -> "Visualisation Graphique Temporel"
+                                    else -> "Analyse IA Local (LM Studio)"
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -175,6 +176,12 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                     onClick = { activeScreenTab = 2 },
                     icon = { Icon(Icons.AutoMirrored.Filled.ShowChart, contentDescription = null) },
                     label = { Text("Graphiques") }
+                )
+                NavigationBarItem(
+                    selected = activeScreenTab == 3,
+                    onClick = { activeScreenTab = 3 },
+                    icon = { Icon(Icons.Default.Psychology, contentDescription = null) },
+                    label = { Text("IA Local") }
                 )
             }
         }
@@ -644,6 +651,11 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                             }
                         }
                     }
+                }
+
+                3 -> {
+                    // TAB 3: PAGE DÉDIÉE ANALYSE IA LOCAL (LM STUDIO)
+                    LlmAnalysisTab(uiState = uiState, viewModel = viewModel)
                 }
             }
         }
@@ -1556,4 +1568,208 @@ fun EegExportDialog(
             }
         }
     )
+}
+
+@Composable
+fun LlmAnalysisTab(
+    uiState: EegUiState,
+    viewModel: EegViewModel
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            // Card 1: Configuration Serveur LM Studio / LM Link
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Psychology,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Connexion LM Studio / LM Link",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+
+                    Text(
+                        text = "Connectez l'application au LLM exécuté sur votre PC local via LM Studio.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = uiState.llmHostIp,
+                            onValueChange = { viewModel.setLlmHostIp(it) },
+                            label = { Text("Adresse IP du PC") },
+                            placeholder = { Text("10.0.2.2 ou 192.168.1.X") },
+                            modifier = Modifier.weight(2f),
+                            singleLine = true
+                        )
+
+                        OutlinedTextField(
+                            value = uiState.llmPort.toString(),
+                            onValueChange = { viewModel.setLlmPort(it) },
+                            label = { Text("Port") },
+                            placeholder = { Text("1234") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
+                        )
+                    }
+
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(
+                                text = "💡 ADRESSES IP UTILES :",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "• Émulateur Android Studio : Utilisez 10.0.2.2\n• Smartphone réel (Wi-Fi) : Utilisez l'IP de votre PC (ex: 192.168.1.50)\n• Dans LM Studio : Lancez le Local Server (Port 1234, Host 0.0.0.0)",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            // Card 2: Prompt et Lancement d'Analyse
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Demande d'Analyse au LLM Local",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    OutlinedTextField(
+                        value = uiState.llmPromptText,
+                        onValueChange = { viewModel.setLlmPromptText(it) },
+                        label = { Text("Consigne / Question") },
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 3
+                    )
+
+                    val telemetry = uiState.latestTelemetry
+                    Surface(
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (telemetry != null) {
+                                    "Télémétrie EEG transmise : Attention=${telemetry.attention}, Méditation=${telemetry.meditation}, Qualité=${telemetry.signalFitPercent}%"
+                                } else {
+                                    "Mode démonstration (aucun casque EEG connecté)"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (telemetry != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
+
+                    Button(
+                        onClick = { viewModel.analyzeWithLlm() },
+                        enabled = !uiState.isLlmAnalyzing,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (uiState.isLlmAnalyzing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Analyse en cours par le LLM...")
+                        } else {
+                            Icon(Icons.Default.Psychology, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Lancer l'analyse IA (LM Studio)")
+                        }
+                    }
+                }
+            }
+        }
+
+        if (uiState.llmAnalysisResult != null) {
+            item {
+                // Card 3: Affichage du résultat de l'Analyse IA
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Psychology,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                text = "Analyse & Feedback Neuro-IA",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+
+                        Text(
+                            text = uiState.llmAnalysisResult,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.mybrainlive.audio.MeditationTonePlayer
 import com.example.mybrainlive.export.EegExporter
 import com.example.mybrainlive.export.ExportFormat
+import com.example.mybrainlive.llm.LmStudioClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,6 +42,12 @@ data class EegUiState(
     val meditationPercentThreshold: Int = 70,  // % requis sur la fenêtre pour déclencher le son
     val meditationWindowPercent: Float = 0f,   // % actuel d'échantillons méditatifs (30 dernières s)
     val isMeditatingState: Boolean = false,
+    // Configuration & Réponses IA / LLM (LM Studio / LM Link)
+    val llmHostIp: String = "10.0.2.2",
+    val llmPort: Int = 1234,
+    val llmPromptText: String = "Analyse mon état mental actuel et donne-moi un conseil personnalisé.",
+    val llmAnalysisResult: String? = null,
+    val isLlmAnalyzing: Boolean = false,
 ) {
     val filteredPairedDevices: List<EegDevice>
         get() = if (selectedFilter == null) pairedDevices else pairedDevices.filter { it.deviceType == selectedFilter }
@@ -361,6 +368,35 @@ class EegViewModel(application: Application) : AndroidViewModel(application) {
 
     fun dismissExportDialog() {
         _uiState.value = _uiState.value.copy(showExportDialog = false)
+    }
+
+    fun setLlmHostIp(ip: String) {
+        _uiState.value = _uiState.value.copy(llmHostIp = ip)
+    }
+
+    fun setLlmPort(portString: String) {
+        val port = portString.toIntOrNull() ?: 1234
+        _uiState.value = _uiState.value.copy(llmPort = port)
+    }
+
+    fun setLlmPromptText(text: String) {
+        _uiState.value = _uiState.value.copy(llmPromptText = text)
+    }
+
+    fun analyzeWithLlm() {
+        val currentState = _uiState.value
+        val client = LmStudioClient(hostIp = currentState.llmHostIp, port = currentState.llmPort)
+        _uiState.value = currentState.copy(isLlmAnalyzing = true, llmAnalysisResult = null)
+
+        viewModelScope.launch {
+            addLog("Connexion au LLM local (LM Studio @ ${currentState.llmHostIp}:${currentState.llmPort})...")
+            val result = client.analyzeEeg(currentState.latestTelemetry, currentState.llmPromptText)
+            _uiState.value = _uiState.value.copy(
+                isLlmAnalyzing = false,
+                llmAnalysisResult = result
+            )
+            addLog("Analyse LLM terminée.")
+        }
     }
 
     private fun addLog(message: String) {
