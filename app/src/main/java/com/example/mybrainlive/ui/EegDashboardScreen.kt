@@ -1,10 +1,14 @@
 package com.example.mybrainlive.ui
 
 import android.Manifest
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import com.example.mybrainlive.llm.AiDataSource
+import com.example.mybrainlive.llm.AiProvider
+import com.example.mybrainlive.llm.ChatMessage
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -46,11 +50,13 @@ import androidx.compose.material.icons.filled.BluetoothConnected
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Refresh
@@ -689,8 +695,8 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                 }
 
                 3 -> {
-                    // TAB 3: PAGE DÉDIÉE ANALYSE IA LOCAL (LM STUDIO)
-                    LlmAnalysisTab(uiState = uiState, viewModel = viewModel)
+                    // TAB 3: PAGE DÉDIÉE ANALYSE & DISCUSSION IA MULTI-PROVIDER
+                    AiMultiProviderPage(uiState = uiState, viewModel = viewModel)
                 }
             }
         }
@@ -1790,18 +1796,21 @@ fun EegExportDialog(
 }
 
 @Composable
-fun LlmAnalysisTab(
+fun AiMultiProviderPage(
     uiState: EegUiState,
     viewModel: EegViewModel
 ) {
+    val context = LocalContext.current
+    var inputMessageText by remember { mutableStateOf("") }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(vertical = 4.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // 1. Selector de Fournisseur d'IA
         item {
-            // Card 1: Configuration Serveur LM Studio / LM Link
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -1809,25 +1818,24 @@ fun LlmAnalysisTab(
                 )
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 imageVector = Icons.Default.Psychology,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Connexion LM Studio / LM Link",
+                                text = "Choix du Fournisseur d'IA",
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.titleMedium
                             )
@@ -1835,82 +1843,148 @@ fun LlmAnalysisTab(
                         EducationalHelpButton(topic = EducationalTopics.LLM_ANALYSIS)
                     }
 
-                    Text(
-                        text = "Connectez l'application au LLM exécuté sur votre PC local via LM Studio.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
+                    // Provider Selection Grid/Row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        OutlinedTextField(
-                            value = uiState.llmHostIp,
-                            onValueChange = { viewModel.setLlmHostIp(it) },
-                            label = { Text("Adresse IP du PC") },
-                            placeholder = { Text("10.0.2.2 ou 192.168.1.X") },
-                            modifier = Modifier.weight(2f),
-                            singleLine = true
-                        )
-
-                        OutlinedTextField(
-                            value = uiState.llmPort.toString(),
-                            onValueChange = { viewModel.setLlmPort(it) },
-                            label = { Text("Port") },
-                            placeholder = { Text("1234") },
-                            modifier = Modifier.weight(1f),
-                            singleLine = true
-                        )
+                        AiProvider.entries.forEach { provider ->
+                            val isSelected = uiState.selectedAiProvider == provider
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+                                border = if (isSelected) androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { viewModel.setAiProvider(provider) }
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 8.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = when (provider) {
+                                            AiProvider.LOCAL -> "🖥️ Local"
+                                            AiProvider.ANTHROPIC -> "🟧 Claude"
+                                            AiProvider.OPENAI -> "🟩 OpenAI"
+                                            AiProvider.MISTRAL -> "🟧 Mistral"
+                                        },
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
                     }
 
+                    // Provider Auth / Connection Box
+                    val currentProvider = uiState.selectedAiProvider
                     Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column(modifier = Modifier.padding(10.dp)) {
-                            Text(
-                                text = "💡 ADRESSES IP UTILES :",
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "• Émulateur Android Studio : Utilisez 10.0.2.2\n• Smartphone réel (Wi-Fi) : Utilisez l'IP de votre PC (ex: 192.168.1.50)\n• Dans LM Studio : Lancez le Local Server (Port 1234, Host 0.0.0.0)",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        Column(
+                            modifier = Modifier.padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = currentProvider.displayName,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+
+                                if (currentProvider != AiProvider.LOCAL) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(currentProvider.loginUrl))
+                                            context.startActivity(intent)
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                        modifier = Modifier.height(28.dp)
+                                    ) {
+                                        Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(12.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Connexion Web / API Key", fontSize = 10.sp)
+                                    }
+                                }
+                            }
+
+                            if (currentProvider == AiProvider.LOCAL) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedTextField(
+                                        value = uiState.llmHostIp,
+                                        onValueChange = { viewModel.setLlmHostIp(it) },
+                                        label = { Text("Adresse IP du PC") },
+                                        placeholder = { Text("10.0.2.2 ou 192.168.1.X") },
+                                        modifier = Modifier.weight(2f),
+                                        singleLine = true
+                                    )
+                                    OutlinedTextField(
+                                        value = uiState.llmPort.toString(),
+                                        onValueChange = { viewModel.setLlmPort(it) },
+                                        label = { Text("Port") },
+                                        modifier = Modifier.weight(1f),
+                                        singleLine = true
+                                    )
+                                }
+                            } else {
+                                val currentKey = uiState.aiApiKeys[currentProvider].orEmpty()
+                                OutlinedTextField(
+                                    value = currentKey,
+                                    onValueChange = { viewModel.setAiApiKey(currentProvider, it) },
+                                    label = { Text("Clé API (${currentProvider.name})") },
+                                    placeholder = { Text("sk-...") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true
+                                )
+                            }
                         }
                     }
                 }
             }
         }
 
+        // 2. Data Source Selector (Live EEG vs Recorded Session)
         item {
-            // Card 2: Prompt et Lancement d'Analyse
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "Demande d'Analyse au LLM Local",
+                        text = "Source des Données EEG transmises à l'IA",
                         fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium
+                        style = MaterialTheme.typography.titleSmall
                     )
 
-                    OutlinedTextField(
-                        value = uiState.llmPromptText,
-                        onValueChange = { viewModel.setLlmPromptText(it) },
-                        label = { Text("Consigne / Question") },
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        maxLines = 3
-                    )
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        AiDataSource.entries.forEach { source ->
+                            val isSelected = uiState.aiDataSource == source
+                            FilterChip(
+                                selected = isSelected,
+                                onClick = { viewModel.setAiDataSource(source) },
+                                label = { Text(source.label, fontSize = 11.sp) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
 
-                    val telemetry = uiState.latestTelemetry
                     Surface(
                         color = MaterialTheme.colorScheme.surfaceContainerLow,
                         shape = RoundedCornerShape(8.dp),
@@ -1918,81 +1992,183 @@ fun LlmAnalysisTab(
                     ) {
                         Row(
                             modifier = Modifier.padding(10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = if (telemetry != null) {
-                                    "Télémétrie EEG transmise : Attention=${telemetry.attention}, Méditation=${telemetry.meditation}, Qualité=${telemetry.signalFitPercent}%"
+                            val telemetry = uiState.latestTelemetry
+                            val sourceText = if (uiState.aiDataSource == AiDataSource.LIVE) {
+                                if (telemetry != null) {
+                                    "📡 En direct: Att=${telemetry.attention}, Méd=${telemetry.meditation}, Qualité=${telemetry.signalFitPercent}%"
                                 } else {
-                                    "Mode démonstration (aucun casque EEG connecté)"
-                                },
-                                style = MaterialTheme.typography.bodySmall,
+                                    "📡 En direct: Aucun casque connecté"
+                                }
+                            } else {
+                                if (uiState.recordedSamples.isNotEmpty()) {
+                                    "📂 Session: ${uiState.importedSessionName ?: "Session active"} (${uiState.recordedSamples.size} échantillons)"
+                                } else {
+                                    "📂 Session: Aucune session enregistrée/importée"
+                                }
+                            }
+                            Text(
+                                text = sourceText,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (telemetry != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                                color = MaterialTheme.colorScheme.primary
                             )
-                        }
-                    }
-
-                    Button(
-                        onClick = { viewModel.analyzeWithLlm() },
-                        enabled = !uiState.isLlmAnalyzing,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        if (uiState.isLlmAnalyzing) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                strokeWidth = 2.dp
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Analyse en cours par le LLM...")
-                        } else {
-                            Icon(Icons.Default.Psychology, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Lancer l'analyse IA (LM Studio)")
                         }
                     }
                 }
             }
         }
 
-        if (uiState.llmAnalysisResult != null) {
-            item {
-                // Card 3: Affichage du résultat de l'Analyse IA
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+        // 3. Conversation Chat Interface
+        item {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        Text(
+                            text = "Discussion & Bilan Neuro-IA",
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+
+                        if (uiState.chatHistory.isNotEmpty()) {
+                            IconButton(
+                                onClick = { viewModel.clearChatHistory() },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Effacer la discussion",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Prompt suggestion chips
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(
+                            "Bilan concentration",
+                            "Exercice de calme",
+                            "Analyse des ondes"
+                        ).forEach { suggestion ->
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        viewModel.sendChatMessage("Fais un $suggestion sur mes données EEG actuelles.")
+                                    }
+                            ) {
+                                Text(
+                                    text = suggestion,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(vertical = 4.dp, horizontal = 4.dp),
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+                    }
+
+                    // Chat messages list
+                    if (uiState.chatHistory.isEmpty()) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.surfaceContainerLow,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Psychology,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
                             Text(
-                                text = "Analyse & Feedback Neuro-IA",
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                text = "Posez une question ou demandez une analyse à l'IA (${uiState.selectedAiProvider.displayName})...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(12.dp)
                             )
                         }
+                    } else {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            uiState.chatHistory.forEach { msg ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = if (msg.isUser) Arrangement.End else Arrangement.Start
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(
+                                            topStart = 12.dp,
+                                            topEnd = 12.dp,
+                                            bottomStart = if (msg.isUser) 12.dp else 2.dp,
+                                            bottomEnd = if (msg.isUser) 2.dp else 12.dp
+                                        ),
+                                        color = if (msg.isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primaryContainer,
+                                        modifier = Modifier.fillMaxWidth(0.85f)
+                                    ) {
+                                        Text(
+                                            text = msg.text,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = if (msg.isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.padding(10.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
 
-                        Text(
-                            text = uiState.llmAnalysisResult,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                    // Input & Send button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = inputMessageText,
+                            onValueChange = { inputMessageText = it },
+                            placeholder = { Text("Votre question à l'IA...") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
                         )
+
+                        Button(
+                            onClick = {
+                                if (inputMessageText.isNotBlank()) {
+                                    viewModel.sendChatMessage(inputMessageText)
+                                    inputMessageText = ""
+                                }
+                            },
+                            enabled = inputMessageText.isNotBlank() && !uiState.isAiThinking,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
+                        ) {
+                            if (uiState.isAiThinking) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Send,
+                                    contentDescription = "Envoyer",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }

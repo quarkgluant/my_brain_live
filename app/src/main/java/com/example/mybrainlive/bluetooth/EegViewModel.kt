@@ -7,6 +7,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.mybrainlive.audio.MeditationTonePlayer
 import com.example.mybrainlive.export.EegExporter
 import com.example.mybrainlive.export.ExportFormat
+import com.example.mybrainlive.llm.AiDataSource
+import com.example.mybrainlive.llm.AiMultiProviderClient
+import com.example.mybrainlive.llm.AiProvider
+import com.example.mybrainlive.llm.ChatMessage
 import com.example.mybrainlive.llm.LmStudioClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,12 +49,18 @@ data class EegUiState(
     val meditationPercentThreshold: Int = 70,  // % requis sur la fenêtre pour déclencher le son
     val meditationWindowPercent: Float = 0f,   // % actuel d'échantillons méditatifs (30 dernières s)
     val isMeditatingState: Boolean = false,
-    // Configuration & Réponses IA / LLM (LM Studio / LM Link)
+    // Configuration & Réponses IA / LLM (LM Studio / LM Link / Cloud)
     val llmHostIp: String = "10.0.2.2",
     val llmPort: Int = 1234,
     val llmPromptText: String = "Analyse mon état mental actuel et donne-moi un conseil personnalisé.",
     val llmAnalysisResult: String? = null,
     val isLlmAnalyzing: Boolean = false,
+    // Fournisseurs d'IA Multi-Provider (Local, Anthropic, OpenAI, Mistral)
+    val selectedAiProvider: AiProvider = AiProvider.LOCAL,
+    val aiDataSource: AiDataSource = AiDataSource.LIVE,
+    val aiApiKeys: Map<AiProvider, String> = emptyMap(),
+    val chatHistory: List<ChatMessage> = emptyList(),
+    val isAiThinking: Boolean = false,
 ) {
     val filteredPairedDevices: List<EegDevice>
         get() = if (selectedFilter == null) pairedDevices else pairedDevices.filter { it.deviceType == selectedFilter }
@@ -401,11 +411,71 @@ class EegViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private val aiMultiClient = AiMultiProviderClient()
+
     fun clearImportedSession() {
         _uiState.value = _uiState.value.copy(
             importedSessionName = null,
             importedSampleCount = 0
         )
+    }
+
+    fun setAiProvider(provider: AiProvider) {
+        _uiState.value = _uiState.value.copy(selectedAiProvider = provider)
+    }
+
+    fun setAiDataSource(dataSource: AiDataSource) {
+        _uiState.value = _uiState.value.copy(aiDataSource = dataSource)
+    }
+
+    fun setAiApiKey(provider: AiProvider, key: String) {
+        val currentKeys = _uiState.value.aiApiKeys.toMutableMap()
+        currentKeys[provider] = key
+        _uiState.value = _uiState.value.copy(aiApiKeys = currentKeys)
+    }
+
+    fun sendChatMessage(userText: String) {
+        if (userText.isBlank()) return
+        val currentState = _uiState.value
+        val history = currentState.chatHistory.toMutableList()
+        val userMsg = ChatMessage(isUser = true, text = userText.trim())
+        history.add(userMsg)
+
+        _uiState.value = currentState.copy(
+            chatHistory = history,
+            isAiThinking = true
+        )
+
+        val apiKey = currentState.aiApiKeys[currentState.selectedAiProvider].orEmpty()
+
+        viewModelScope.launch {
+            addLog("Envoi de la requête à l'IA (${currentState.selectedAiProvider.displayName})...")
+            val aiResponseText = aiMultiClient.sendMessage(
+                provider = currentState.selectedAiProvider,
+                apiKey = apiKey,
+                hostIp = currentState.llmHostIp,
+                port = currentState.llmPort,
+                dataSource = currentState.aiDataSource,
+                telemetry = currentState.latestTelemetry,
+                recordedSamples = currentState.recordedSamples,
+                userMessage = userText,
+                conversationHistory = history
+            )
+
+            val updatedHistory = _uiState.value.chatHistory.toMutableList()
+            updatedHistory.add(ChatMessage(isUser = false, text = aiResponseText))
+
+            _uiState.value = _uiState.value.copy(
+                chatHistory = updatedHistory,
+                isAiThinking = false,
+                llmAnalysisResult = aiResponseText
+            )
+            addLog("Réponse reçue de l'IA (${currentState.selectedAiProvider.displayName}).")
+        }
+    }
+
+    fun clearChatHistory() {
+        _uiState.value = _uiState.value.copy(chatHistory = emptyList())
     }
 
     fun shareExportedFile(context: Context) {
