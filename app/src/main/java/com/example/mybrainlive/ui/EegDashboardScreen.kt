@@ -869,7 +869,11 @@ fun BrainwaveSpectrumChart(telemetry: EegTelemetry?) {
                         fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
                         color = color,
-                        fontFamily = FontFamily.Monospace
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 1,
+                        softWrap = false,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
