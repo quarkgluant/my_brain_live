@@ -1,10 +1,16 @@
 package com.example.mybrainlive.ui
 
 import android.Manifest
+import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -38,8 +44,11 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothConnected
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PlayArrow
@@ -48,6 +57,11 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableLongStateOf
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Date
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Warning
@@ -1371,62 +1385,205 @@ fun EegRecordingBar(
     uiState: EegUiState,
     viewModel: EegViewModel
 ) {
+    val context = LocalContext.current
+
+    // Document Picker Launcher (Import Session)
+    val openDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            viewModel.importSessionFromUri(context, uri)
+        }
+    }
+
+    // Timer & Pulse Animation for Active Recording
+    var elapsedSeconds by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(uiState.isRecording) {
+        if (uiState.isRecording) {
+            val startTime = uiState.recordingStartTime.takeIf { it > 0 } ?: System.currentTimeMillis()
+            while (uiState.isRecording) {
+                elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000L
+                delay(1000L)
+            }
+        } else {
+            elapsedSeconds = 0L
+        }
+    }
+
+    val minutes = elapsedSeconds / 60
+    val seconds = elapsedSeconds % 60
+    val formattedTimer = String.format(Locale.US, "%02d:%02d", minutes, seconds)
+
+    val infiniteTransition = rememberInfiniteTransition(label = "recordingPulse")
+    val dotAlpha by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "dotAlpha"
+    )
+
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = if (uiState.isRecording) Color(0xFF7F1D1D) else MaterialTheme.colorScheme.surfaceContainerHigh
+            containerColor = if (uiState.isRecording) Color(0xFF450A0A) else MaterialTheme.colorScheme.surfaceContainerHigh
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.FiberManualRecord,
-                    contentDescription = null,
-                    tint = if (uiState.isRecording) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Column {
-                    Text(
-                        text = if (uiState.isRecording) "ENREGISTREMENT EN COURS" else "Enregistrement Session EEG",
-                        fontWeight = FontWeight.Bold,
-                        color = if (uiState.isRecording) Color.White else MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = if (uiState.isRecording)
-                            "${uiState.recordedSamples.size} échantillons capturés"
-                        else
-                            "Format HDF5 (.h5) ou Données Brutes (.csv)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (uiState.isRecording) Color.LightGray else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+            // Active Recording UI State
+            if (uiState.isRecording) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(start = 4.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFEF4444).copy(alpha = dotAlpha))
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "ENREGISTREMENT ",
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    fontSize = 12.sp
+                                )
+                                Text(
+                                    text = formattedTimer,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFF87171),
+                                    fontSize = 12.sp
+                                )
+                            }
+                            Text(
+                                text = "${uiState.recordedSamples.size} échantillons capturés",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.LightGray,
+                                fontSize = 10.sp
+                            )
+                        }
+                    }
+
+                    Button(
+                        onClick = { viewModel.stopRecording() },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Arrêter & Exporter", fontSize = 11.sp)
+                    }
+                }
+            } else {
+                // Inactive Recording UI State: Sleek compact Bar with 3 action buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = { viewModel.startRecording() },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        modifier = Modifier.weight(1.1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FiberManualRecord,
+                            contentDescription = null,
+                            tint = Color.Red,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Enregistrer", fontSize = 11.sp, maxLines = 1)
+                    }
+
+                    OutlinedButton(
+                        onClick = { openDocumentLauncher.launch(arrayOf("*/*")) },
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FolderOpen,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Importer", fontSize = 11.sp, maxLines = 1)
+                    }
+
+                    OutlinedButton(
+                        onClick = { viewModel.stopRecording() },
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                        modifier = Modifier.weight(1.1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CloudUpload,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Sauvegarder", fontSize = 11.sp, maxLines = 1)
+                    }
                 }
             }
 
-            if (uiState.isRecording) {
-                Button(
-                    onClick = { viewModel.stopRecording() },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626))
+            // Banner when an Imported Session is loaded into the app
+            if (uiState.importedSessionName != null) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Arrêter & Exporter", fontSize = 12.sp)
-                }
-            } else {
-                Button(
-                    onClick = { viewModel.startRecording() },
-                    enabled = uiState.connectionState is BluetoothConnectionState.Connected || uiState.latestTelemetry != null || uiState.telemetryHistory.isNotEmpty()
-                ) {
-                    Icon(Icons.Default.FiberManualRecord, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.Red)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Enregistrer", fontSize = 12.sp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FolderOpen,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Session chargée : ${uiState.importedSessionName} (${uiState.importedSampleCount} échantillons)",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        IconButton(
+                            onClick = { viewModel.clearImportedSession() },
+                            modifier = Modifier.size(20.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Fermer",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -1441,18 +1598,27 @@ fun EegExportDialog(
     val context = LocalContext.current
     var selectedFormat by remember { mutableStateOf(ExportFormat.HDF5) }
 
+    // Custom File Destination Selector via Storage Access Framework (SAF / Google Drive)
+    val createDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument(selectedFormat.mimeType)
+    ) { uri: Uri? ->
+        if (uri != null) {
+            viewModel.exportSessionToUri(context, uri, selectedFormat)
+        }
+    }
+
     AlertDialog(
         onDismissRequest = { viewModel.dismissExportDialog() },
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.SaveAlt, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Sauvegarde / Exportation EEG", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text("Sauvegarde / Exportation Session", fontWeight = FontWeight.Bold, fontSize = 18.sp)
             }
         },
         text = {
             val sampleCount = if (uiState.recordedSamples.isNotEmpty()) uiState.recordedSamples.size else uiState.telemetryHistory.size
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
                     text = "Session enregistrée : $sampleCount échantillons prêts.",
                     style = MaterialTheme.typography.bodyMedium,
@@ -1460,7 +1626,7 @@ fun EegExportDialog(
                 )
 
                 Text(
-                    text = "Choisissez le format de sauvegarde souhaité :",
+                    text = "Format d'exportation :",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1492,13 +1658,13 @@ fun EegExportDialog(
                                     Text(
                                         text = format.label,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
+                                        fontSize = 12.sp
                                     )
                                     Text(
                                         text = when (format) {
-                                            ExportFormat.HDF5 -> "Conteneur scientifique .h5 compatible MNE / EEGLAB / HDFView"
-                                            ExportFormat.CSV_RAW -> "Horodaté, lisible sous Excel, Python Pandas, MATLAB"
-                                            ExportFormat.JSON -> "Format structuré Web & JSON"
+                                            ExportFormat.HDF5 -> "Conteneur scientifique .h5"
+                                            ExportFormat.CSV_RAW -> "Données CSV horodatées (Excel/Pandas)"
+                                            ExportFormat.JSON -> "Format JSON structuré Web"
                                         },
                                         fontSize = 10.sp,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1517,7 +1683,7 @@ fun EegExportDialog(
                     ) {
                         Column(modifier = Modifier.padding(10.dp)) {
                             Text(
-                                text = "✅ Fichier Sauvegardé :",
+                                text = "✅ Sauvegardé localement dans :",
                                 color = Color(0xFF4ADE80),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp
@@ -1528,35 +1694,60 @@ fun EegExportDialog(
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 11.sp
                             )
-                            Text(
-                                text = "Stocké dans Téléchargements/MyBrainLive",
-                                color = Color.LightGray,
-                                fontSize = 10.sp
-                            )
                         }
                     }
                 }
             }
         },
         confirmButton = {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (uiState.lastExportedFile != null) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Button 1: Custom Destination / Google Drive Picker via SAF
                     Button(
-                        onClick = { viewModel.shareExportedFile(context) },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                        onClick = {
+                            val timeStr = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+                            createDocumentLauncher.launch("MyBrainLive_EEG_$timeStr.${selectedFormat.extension}")
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
                     ) {
-                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Partager")
+                        Text("Sélectionner dossier / Google Drive", fontSize = 10.sp)
                     }
                 }
 
-                Button(
-                    onClick = { viewModel.exportSession(context, selectedFormat) }
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.SaveAlt, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(if (uiState.lastExportedFile == null) "Sauvegarder" else "Ré-exporter")
+                    // Button 2: Quick Save to Downloads
+                    OutlinedButton(
+                        onClick = { viewModel.exportSession(context, selectedFormat) },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                    ) {
+                        Icon(Icons.Default.SaveAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Téléchargements", fontSize = 11.sp)
+                    }
+
+                    // Button 3: Share sheet (Google Drive, Gmail, etc.)
+                    if (uiState.lastExportedFile != null) {
+                        OutlinedButton(
+                            onClick = { viewModel.shareExportedFile(context) },
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Partager", fontSize = 11.sp)
+                        }
+                    }
                 }
             }
         },

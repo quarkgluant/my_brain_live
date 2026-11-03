@@ -71,10 +71,13 @@ class LmStudioClient(
             })
             put("temperature", 0.7)
             put("max_tokens", 400)
+            put("stream", false)
         }
 
         val request = Request.Builder()
             .url(url)
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
             .post(jsonBody.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
             .build()
 

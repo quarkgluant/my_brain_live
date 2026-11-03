@@ -36,6 +36,9 @@ data class EegUiState(
     val showExportDialog: Boolean = false,
     val lastExportedFile: File? = null,
     val lastExportedFormat: ExportFormat? = null,
+    // Importation de session
+    val importedSessionName: String? = null,
+    val importedSampleCount: Int = 0,
     // Retour sonore de méditation
     val audioFeedbackEnabled: Boolean = false,
     val meditationSampleThreshold: Int = 60,   // eSense >= seuil => échantillon "méditatif"
@@ -356,6 +359,53 @@ class EegViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             addLog("Échec de l'exportation du fichier.")
         }
+    }
+
+    fun exportSessionToUri(context: Context, uri: android.net.Uri, format: ExportFormat) {
+        val listToExport = if (_uiState.value.recordedSamples.isNotEmpty()) {
+            _uiState.value.recordedSamples
+        } else if (_uiState.value.telemetryHistory.isNotEmpty()) {
+            _uiState.value.telemetryHistory
+        } else if (_uiState.value.latestTelemetry != null) {
+            listOfNotNull(_uiState.value.latestTelemetry)
+        } else {
+            emptyList()
+        }
+
+        val success = EegExporter.exportToUri(context, uri, listToExport, format)
+        if (success) {
+            addLog("Session exportée avec succès vers la destination sélectionnée (${listToExport.size} échantillons).")
+        } else {
+            addLog("Échec de la sauvegarde vers la destination.")
+        }
+    }
+
+    fun importSessionFromUri(context: Context, uri: android.net.Uri) {
+        val imported = EegExporter.importSessionFromUri(context, uri)
+        if (imported != null) {
+            val (fileName, samples) = imported
+            val rawList = samples.map { it.rawWave }
+            val latest = samples.lastOrNull()
+            _uiState.value = _uiState.value.copy(
+                importedSessionName = fileName,
+                importedSampleCount = samples.size,
+                recordedSamples = samples,
+                telemetryHistory = samples.takeLast(120),
+                eSenseHistory = samples.takeLast(120),
+                rawWaveHistory = rawList.takeLast(150),
+                latestTelemetry = latest ?: _uiState.value.latestTelemetry
+            )
+            addLog("Session '$fileName' importée avec succès (${samples.size} échantillons).")
+        } else {
+            addLog("Impossible d'importer le fichier de session sélectionné.")
+        }
+    }
+
+    fun clearImportedSession() {
+        _uiState.value = _uiState.value.copy(
+            importedSessionName = null,
+            importedSampleCount = 0
+        )
     }
 
     fun shareExportedFile(context: Context) {
