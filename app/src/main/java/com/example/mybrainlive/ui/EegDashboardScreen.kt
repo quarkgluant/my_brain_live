@@ -574,12 +574,17 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                                         horizontalArrangement = Arrangement.SpaceBetween,
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text(
-                                            text = "Oscilloscope Onde Brute (µV)",
-                                            fontWeight = FontWeight.Bold,
-                                            style = MaterialTheme.typography.titleMedium,
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
                                             modifier = Modifier.weight(1f)
-                                        )
+                                        ) {
+                                            Text(
+                                                text = "Oscilloscope Onde Brute (µV)",
+                                                fontWeight = FontWeight.Bold,
+                                                style = MaterialTheme.typography.titleMedium
+                                            )
+                                            EducationalHelpButton(topic = EducationalTopics.RAW_WAVE)
+                                        }
                                         Surface(
                                             shape = RoundedCornerShape(6.dp),
                                             color = Color(0xFF0F172A),
@@ -609,11 +614,19 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                                     modifier = Modifier.padding(14.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Text(
-                                        text = "Évolution Temporelle Attention & Méditation (2 min)",
-                                        fontWeight = FontWeight.Bold,
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Évolution Temporelle Attention & Méditation (2 min)",
+                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        EducationalHelpButton(topic = EducationalTopics.ATTENTION_MEDITATION)
+                                    }
 
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
@@ -654,11 +667,19 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                                     modifier = Modifier.padding(14.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Text(
-                                        text = "Analyseur du Spectre Fréquentiel (ASIC Power)",
-                                        fontWeight = FontWeight.Bold,
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Analyseur du Spectre Fréquentiel (ASIC Power)",
+                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        EducationalHelpButton(topic = EducationalTopics.SPECTRUM)
+                                    }
 
                                     BrainwaveSpectrumChart(telemetry = uiState.latestTelemetry)
                                 }
@@ -1318,6 +1339,7 @@ fun MeditationAudioCard(
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleSmall
                     )
+                    EducationalHelpButton(topic = EducationalTopics.BIOFEEDBACK_AUDIO)
                 }
                 Switch(
                     checked = uiState.audioFeedbackEnabled,
@@ -1791,19 +1813,26 @@ fun LlmAnalysisTab(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Psychology,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "Connexion LM Studio / LM Link",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Psychology,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "Connexion LM Studio / LM Link",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                        EducationalHelpButton(topic = EducationalTopics.LLM_ANALYSIS)
                     }
 
                     Text(
