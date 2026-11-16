@@ -12,6 +12,7 @@ import com.example.mybrainlive.llm.AiMultiProviderClient
 import com.example.mybrainlive.llm.AiProvider
 import com.example.mybrainlive.llm.ChatMessage
 import com.example.mybrainlive.llm.LmStudioClient
+import com.example.mybrainlive.ui.NeurofeedbackTarget
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,11 +44,12 @@ data class EegUiState(
     // Importation de session
     val importedSessionName: String? = null,
     val importedSampleCount: Int = 0,
-    // Retour sonore de méditation
+    // Neurofeedback Target & Sound
+    val neurofeedbackTarget: NeurofeedbackTarget = NeurofeedbackTarget.MEDITATION,
     val audioFeedbackEnabled: Boolean = false,
-    val meditationSampleThreshold: Int = 60,   // eSense >= seuil => échantillon "méditatif"
+    val meditationSampleThreshold: Int = 60,   // eSense >= seuil => échantillon "méditatif/concentré"
     val meditationPercentThreshold: Int = 70,  // % requis sur la fenêtre pour déclencher le son
-    val meditationWindowPercent: Float = 0f,   // % actuel d'échantillons méditatifs (30 dernières s)
+    val meditationWindowPercent: Float = 0f,   // % actuel d'échantillons qualifiés (30 dernières s)
     val isMeditatingState: Boolean = false,
     // Configuration & Réponses IA / LLM (LM Studio / LM Link / Cloud)
     val llmHostIp: String = "10.0.2.2",
@@ -211,12 +213,15 @@ class EegViewModel(application: Application) : AndroidViewModel(application) {
         val state = _uiState.value
         val now = System.currentTimeMillis()
 
-        // Seuls les casques type NeuroSky fournissent un eSense méditation fiable
         val isNeuroSkyDevice = telemetry?.deviceType == EegDeviceType.MINDWAVE_MOBILE ||
                 telemetry?.deviceType == EegDeviceType.BRAINLINK_LITE
 
         if (telemetry != null && isNeuroSkyDevice && telemetry.isHeadsetConnected) {
-            meditationWindow.addLast(telemetry.timestamp to telemetry.meditation)
+            val metricValue = when (state.neurofeedbackTarget) {
+                NeurofeedbackTarget.MEDITATION -> telemetry.meditation
+                NeurofeedbackTarget.CONCENTRATION -> telemetry.attention
+            }
+            meditationWindow.addLast(telemetry.timestamp to metricValue)
         }
 
         // Purge des échantillons plus vieux que la fenêtre
@@ -228,23 +233,33 @@ class EegViewModel(application: Application) : AndroidViewModel(application) {
             return 0f to false
         }
 
-        val meditativeCount = meditationWindow.count { it.second >= state.meditationSampleThreshold }
-        val percent = (meditativeCount * 100f) / meditationWindow.size
-        val isMeditating = percent >= state.meditationPercentThreshold
+        val qualifyingCount = meditationWindow.count { it.second >= state.meditationSampleThreshold }
+        val percent = (qualifyingCount * 100f) / meditationWindow.size
+        val isTargetActive = percent >= state.meditationPercentThreshold
 
         // Déclenchement du retour sonore : à l'entrée dans l'état, puis rappel périodique
-        if (state.audioFeedbackEnabled && isMeditating) {
-            val wasMeditating = state.isMeditatingState
-            if (!wasMeditating || now - lastChimeTime >= CHIME_REPEAT_INTERVAL_MS) {
-                MeditationTonePlayer.playChime()
+        if (state.audioFeedbackEnabled && isTargetActive) {
+            val wasActive = state.isMeditatingState
+            if (!wasActive || now - lastChimeTime >= CHIME_REPEAT_INTERVAL_MS) {
+                val isConcentration = state.neurofeedbackTarget == NeurofeedbackTarget.CONCENTRATION
+                MeditationTonePlayer.playTone(isConcentration)
                 lastChimeTime = now
-                if (!wasMeditating) {
-                    addLog("État de méditation détecté (${percent.toInt()}% sur 30 s) — retour sonore.")
+                if (!wasActive) {
+                    addLog("Biofeedback ${state.neurofeedbackTarget.shortName} atteint (${percent.toInt()}% sur 30 s) — signal sonore.")
                 }
             }
         }
 
-        return percent to isMeditating
+        return percent to isTargetActive
+    }
+
+    fun setNeurofeedbackTarget(target: NeurofeedbackTarget) {
+        meditationWindow.clear()
+        _uiState.value = _uiState.value.copy(
+            neurofeedbackTarget = target,
+            isMeditatingState = false
+        )
+        addLog("Mode Neurofeedback activé : ${target.label}")
     }
 
     fun toggleAudioFeedback() {

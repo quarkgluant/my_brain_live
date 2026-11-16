@@ -10,53 +10,74 @@ import kotlin.math.exp
 import kotlin.math.sin
 
 /**
- * Joue une tonalité douce (type bol chantant) générée synthétiquement.
- * Aucun fichier audio n'est requis : le PCM est généré à la volée.
+ * Joue des tonalités synthétiques de biofeedback (bol chantant 432 Hz ou son focus 528 Hz).
+ * Utilise le flux audio MÉDIA (STREAM_MUSIC) pour garantir une audition maximale.
  */
 object MeditationTonePlayer {
 
     private const val SAMPLE_RATE = 22050
 
-    /**
-     * Joue un carillon doux en arrière-plan (non bloquant).
-     * Deux fréquences harmoniques avec décroissance exponentielle.
-     */
     fun playChime() {
+        playTone(isConcentration = false)
+    }
+
+    fun playTone(isConcentration: Boolean) {
         Thread {
             try {
-                val pcm = generateChimePcm()
+                val pcm = if (isConcentration) generateFocusPcm() else generateMeditationPcm()
                 val track = createTrack(pcm.size)
                 track.write(pcm, 0, pcm.size)
                 track.play()
-                // Laisser le temps de jouer puis libérer
                 val durationMs = (pcm.size / 2L) * 1000L / SAMPLE_RATE
                 Thread.sleep(durationMs + 200)
                 track.stop()
                 track.release()
             } catch (_: Exception) {
-                // Silencieux : l'audio ne doit jamais faire planter le flux EEG
+                // Silencieux : évite tout crash du flux EEG
             }
         }.apply { isDaemon = true }.start()
     }
 
     /**
-     * Génère un PCM 16-bit mono : fondamentale 432 Hz + harmonique 648 Hz,
-     * avec enveloppe de décroissance exponentielle (~2.5 s).
+     * Tonalité de Méditation (432 Hz - Bol tibétain résonnant)
      */
-    private fun generateChimePcm(): ShortArray {
-        val durationSec = 2.5
+    private fun generateMeditationPcm(): ShortArray {
+        val durationSec = 2.0
         val numSamples = (SAMPLE_RATE * durationSec).toInt()
         val pcm = ShortArray(numSamples)
 
-        val f1 = 432.0
-        val f2 = 648.0 // quinte juste (f1 * 1.5)
+        val f1 = 432.0 // Fréquence fondamentale
+        val f2 = 648.0 // Quinte juste (1.5 * f1)
 
         for (i in 0 until numSamples) {
             val t = i.toDouble() / SAMPLE_RATE
-            val envelope = exp(-2.2 * t) // décroissance douce
-            val attack = if (t < 0.03) t / 0.03 else 1.0 // évite le clic initial
+            val envelope = exp(-1.8 * t)
+            val attack = if (t < 0.04) t / 0.04 else 1.0
             val sample = (sin(2.0 * PI * f1 * t) * 0.7 + sin(2.0 * PI * f2 * t) * 0.3)
-            pcm[i] = (sample * envelope * attack * 24000).toInt()
+            pcm[i] = (sample * envelope * attack * 28000).toInt()
+                .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
+                .toShort()
+        }
+        return pcm
+    }
+
+    /**
+     * Tonalité de Concentration / Focus (528 Hz - Carillon clair)
+     */
+    private fun generateFocusPcm(): ShortArray {
+        val durationSec = 1.5
+        val numSamples = (SAMPLE_RATE * durationSec).toInt()
+        val pcm = ShortArray(numSamples)
+
+        val f1 = 528.0 // Fréquence Focus Solfeggio
+        val f2 = 792.0 // Harmonique supérieure (1.5 * f1)
+
+        for (i in 0 until numSamples) {
+            val t = i.toDouble() / SAMPLE_RATE
+            val envelope = exp(-2.5 * t)
+            val attack = if (t < 0.02) t / 0.02 else 1.0
+            val sample = (sin(2.0 * PI * f1 * t) * 0.8 + sin(2.0 * PI * f2 * t) * 0.2)
+            pcm[i] = (sample * envelope * attack * 29000).toInt()
                 .coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt())
                 .toShort()
         }
@@ -75,8 +96,8 @@ object MeditationTonePlayer {
             AudioTrack.Builder()
                 .setAudioAttributes(
                     AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                         .build()
                 )
                 .setAudioFormat(
@@ -92,7 +113,7 @@ object MeditationTonePlayer {
         } else {
             @Suppress("DEPRECATION")
             AudioTrack(
-                AudioManager.STREAM_NOTIFICATION,
+                AudioManager.STREAM_MUSIC,
                 SAMPLE_RATE, channelConfig, encoding, bufferSize, AudioTrack.MODE_STATIC
             )
         }

@@ -475,7 +475,11 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                         }
 
                         item {
-                            MeditationAudioCard(uiState = uiState, viewModel = viewModel)
+                            InteractiveBrainMapCard(uiState = uiState, viewModel = viewModel)
+                        }
+
+                        item {
+                            NeurofeedbackAudioControlCard(uiState = uiState, viewModel = viewModel)
                         }
 
                         item {
