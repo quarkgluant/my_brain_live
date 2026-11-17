@@ -479,7 +479,7 @@ fun EegDashboardScreen(viewModel: EegViewModel) {
                         }
 
                         item {
-                            NeurofeedbackAudioControlCard(uiState = uiState, viewModel = viewModel)
+                            NeurofeedbackVuMeterPanel(uiState = uiState, viewModel = viewModel)
                         }
 
                         item {

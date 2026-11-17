@@ -40,8 +40,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -53,23 +54,29 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mybrainlive.audio.MeditationTonePlayer
+import com.example.mybrainlive.bluetooth.AudioBiofeedbackMode
 import com.example.mybrainlive.bluetooth.EegDeviceType
 import com.example.mybrainlive.bluetooth.EegTelemetry
 import com.example.mybrainlive.bluetooth.EegUiState
 import com.example.mybrainlive.bluetooth.EegViewModel
 import java.util.Locale
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 enum class NeurofeedbackTarget(val label: String, val shortName: String) {
     MEDITATION("🧘 Méditation (Calme & Sérénité)", "Méditation"),
@@ -118,7 +125,6 @@ fun InteractiveBrainMapCard(
         NeurofeedbackTarget.CONCENTRATION -> telemetry?.attention ?: 0
     }
 
-    // Baseline reference score for comparison mode
     val baselineScore = if (uiState.eSenseHistory.isNotEmpty()) {
         when (target) {
             NeurofeedbackTarget.MEDITATION -> uiState.eSenseHistory.first().meditation
@@ -127,8 +133,8 @@ fun InteractiveBrainMapCard(
     } else 35
 
     val activeColor = when (target) {
-        NeurofeedbackTarget.CONCENTRATION -> Color(0xFFFFB300) // Gold
-        NeurofeedbackTarget.MEDITATION -> Color(0xFF10B981)   // Emerald Green
+        NeurofeedbackTarget.CONCENTRATION -> Color(0xFFFFB300)
+        NeurofeedbackTarget.MEDITATION -> Color(0xFF10B981)
     }
 
     val deltaPct = score - baselineScore
@@ -188,7 +194,6 @@ fun InteractiveBrainMapCard(
                     )
                 }
 
-                // Toggle Comparison View
                 FilterChip(
                     selected = isComparisonMode,
                     onClick = { isComparisonMode = !isComparisonMode },
@@ -244,7 +249,6 @@ fun InteractiveBrainMapCard(
 
             // Topographical Heatmap Brain View
             if (isComparisonMode) {
-                // Side-by-side comparison: Before (Baseline) vs After (Live)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -300,13 +304,12 @@ fun InteractiveBrainMapCard(
                     }
                 }
             } else {
-                // Single Main Brain Map
                 TopographicalBrainCanvas(
                     deviceType = telemetry?.deviceType ?: EegDeviceType.MINDWAVE_MOBILE,
                     target = target,
                     score = score,
                     selectedNode = selectedNodeForPlux,
-                    heightDp = 240,
+                    heightDp = 220,
                     onNodeSelected = { selectedNodeForPlux = it }
                 )
             }
@@ -388,16 +391,13 @@ fun TopographicalBrainCanvas(
             val cx = w / 2f
             val cy = h / 2f
 
-            // Anatomical 2-Lobe Brain Silhouette Path (Left & Right Hemispheres)
             val brainPath = createBrainSilhouettePath(cx, cy, w, h)
 
-            // 1. Fill Glassmorphic Background Silhouette
             drawPath(
                 path = brainPath,
                 color = Color(0xFF1C2541)
             )
 
-            // 2. Draw Topographical Smooth Radial Heatmap Gradient per Active Node
             clipPath(brainPath) {
                 Standard1020Nodes.NODES.forEach { node ->
                     val nx = node.normX * w
@@ -408,21 +408,20 @@ fun TopographicalBrainCanvas(
                         EegDeviceType.PLUX, EegDeviceType.GENERIC -> node.name == selectedNode
                     }
 
-                    // Intensity color gradient blending
                     val intensity = if (isActiveElectrode) (score / 100f).coerceIn(0.1f, 1f) else 0.15f
                     val radius = (w * 0.30f * intensity) * (if (isActiveElectrode) pulseScale else 1f)
 
                     val heatColors = when (target) {
                         NeurofeedbackTarget.CONCENTRATION -> listOf(
-                            Color(0xFFFFD54F).copy(alpha = 0.75f * intensity), // Bright Gold
-                            Color(0xFFFF8F00).copy(alpha = 0.50f * intensity), // Vivid Amber
-                            Color(0xFF0288D1).copy(alpha = 0.20f),            // Deep Blue
+                            Color(0xFFFFD54F).copy(alpha = 0.75f * intensity),
+                            Color(0xFFFF8F00).copy(alpha = 0.50f * intensity),
+                            Color(0xFF0288D1).copy(alpha = 0.20f),
                             Color.Transparent
                         )
                         NeurofeedbackTarget.MEDITATION -> listOf(
-                            Color(0xFF34D399).copy(alpha = 0.75f * intensity), // Emerald Green
-                            Color(0xFF00E5FF).copy(alpha = 0.50f * intensity), // Cyan
-                            Color(0xFF311B92).copy(alpha = 0.20f),            // Indigo
+                            Color(0xFF34D399).copy(alpha = 0.75f * intensity),
+                            Color(0xFF00E5FF).copy(alpha = 0.50f * intensity),
+                            Color(0xFF311B92).copy(alpha = 0.20f),
                             Color.Transparent
                         )
                     }
@@ -439,14 +438,12 @@ fun TopographicalBrainCanvas(
                 }
             }
 
-            // 3. Draw Brain Hemisphere Outlines & Medial Fissure
             drawPath(
                 path = brainPath,
                 color = Color(0xFF3A506B),
                 style = Stroke(width = 3f)
             )
 
-            // Medial Longitudinal Fissure Line down the center
             drawLine(
                 color = Color(0xFF3A506B),
                 start = Offset(cx, cy - h * 0.38f),
@@ -454,7 +451,6 @@ fun TopographicalBrainCanvas(
                 strokeWidth = 2f
             )
 
-            // 4. Draw Crisp Electrode Nodes & Labels
             Standard1020Nodes.NODES.forEach { node ->
                 val nx = node.normX * w
                 val ny = node.normY * h
@@ -464,7 +460,6 @@ fun TopographicalBrainCanvas(
                     EegDeviceType.PLUX, EegDeviceType.GENERIC -> node.name == selectedNode
                 }
 
-                // Electrode Node Dot
                 drawCircle(
                     color = if (isActiveElectrode) Color.White else Color(0xFF000000).copy(alpha = 0.6f),
                     radius = if (isActiveElectrode) 8f else 5f,
@@ -479,7 +474,6 @@ fun TopographicalBrainCanvas(
                     )
                 }
 
-                // Node Label Text
                 val textLayout = textMeasurer.measure(
                     text = node.name,
                     style = TextStyle(
@@ -502,15 +496,11 @@ fun TopographicalBrainCanvas(
     }
 }
 
-/**
- * Creates an anatomical top-down two-hemisphere brain path outline.
- */
 private fun createBrainSilhouettePath(cx: Float, cy: Float, w: Float, h: Float): Path {
     val rw = w * 0.32f
     val rh = h * 0.40f
 
     return Path().apply {
-        // Left Hemisphere
         moveTo(cx, cy - rh)
         cubicTo(
             cx - rw * 0.6f, cy - rh * 0.98f,
@@ -522,8 +512,6 @@ private fun createBrainSilhouettePath(cx: Float, cy: Float, w: Float, h: Float):
             cx - rw * 0.6f, cy + rh * 0.98f,
             cx, cy + rh
         )
-
-        // Right Hemisphere
         cubicTo(
             cx + rw * 0.6f, cy + rh * 0.98f,
             cx + rw * 1.05f, cy + rh * 0.5f,
@@ -538,13 +526,31 @@ private fun createBrainSilhouettePath(cx: Float, cy: Float, w: Float, h: Float):
     }
 }
 
+/**
+ * Panneau complet Neurofeedback : Vumètre Analogique avec Rémanence/Flou et Contrôles Audio
+ */
 @Composable
-fun NeurofeedbackAudioControlCard(
+fun NeurofeedbackVuMeterPanel(
     uiState: EegUiState,
     viewModel: EegViewModel
 ) {
     val target = uiState.neurofeedbackTarget
     val isConcentration = target == NeurofeedbackTarget.CONCENTRATION
+    val telemetry = uiState.latestTelemetry
+    val score = when (target) {
+        NeurofeedbackTarget.MEDITATION -> telemetry?.meditation ?: 0
+        NeurofeedbackTarget.CONCENTRATION -> telemetry?.attention ?: 0
+    }
+
+    // Motion Trail needle history (last 8 scores over time)
+    val needleHistory = remember { mutableStateListOf<Int>() }
+
+    LaunchedEffect(score) {
+        needleHistory.add(score)
+        if (needleHistory.size > 8) {
+            needleHistory.removeAt(0)
+        }
+    }
 
     Card(
         colors = CardDefaults.cardColors(
@@ -557,6 +563,7 @@ fun NeurofeedbackAudioControlCard(
             modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            // Header: 100% Horizontal Layout
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -571,7 +578,7 @@ fun NeurofeedbackAudioControlCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Biofeedback Sonore (${target.shortName})",
+                        text = "Vumètre Analogique & Biofeedback Sonore",
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium
                     )
@@ -582,7 +589,39 @@ fun NeurofeedbackAudioControlCard(
                 )
             }
 
-            // Audio Test Button
+            // Audio Mode Chips: Continuous vs Chime
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AudioBiofeedbackMode.entries.forEach { mode ->
+                    val isSelected = uiState.audioBiofeedbackMode == mode
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { viewModel.setAudioBiofeedbackMode(mode) },
+                        label = {
+                            Text(
+                                text = mode.label,
+                                fontSize = 11.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            // Analog VU Meter Canvas
+            AnalogVuMeterCanvas(
+                score = score,
+                target = target,
+                needleHistory = needleHistory
+            )
+
+            // Audio Test & Info Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -591,7 +630,7 @@ fun NeurofeedbackAudioControlCard(
                 Text(
                     text = String.format(
                         Locale.US,
-                        "Fenêtre 30s : %d%% / seuil %d%%",
+                        "Moyenne 30s : %d%% / seuil %d%%",
                         uiState.meditationWindowPercent.toInt(),
                         uiState.meditationPercentThreshold
                     ),
@@ -602,14 +641,22 @@ fun NeurofeedbackAudioControlCard(
 
                 OutlinedButton(
                     onClick = {
-                        MeditationTonePlayer.playTone(isConcentration = isConcentration)
+                        if (uiState.audioBiofeedbackMode == AudioBiofeedbackMode.CONTINUOUS) {
+                            if (MeditationTonePlayer.isContinuousActive()) {
+                                MeditationTonePlayer.stopContinuousTone()
+                            } else {
+                                MeditationTonePlayer.startContinuousTone(isConcentration)
+                            }
+                        } else {
+                            MeditationTonePlayer.playTone(isConcentration = isConcentration)
+                        }
                     },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                    modifier = Modifier.height(28.dp)
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.height(30.dp)
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, modifier = Modifier.size(12.dp))
+                    Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Tester le son", fontSize = 10.sp)
+                    Text("Tester le son", fontSize = 11.sp)
                 }
             }
 
@@ -642,6 +689,208 @@ fun NeurofeedbackAudioControlCard(
                     valueRange = 30f..100f
                 )
             }
+        }
+    }
+}
+
+/**
+ * Canvas de Vumètre Analogique avec Aiguille & Flou/Rémanence de mouvement
+ */
+@Composable
+fun AnalogVuMeterCanvas(
+    score: Int,
+    target: NeurofeedbackTarget,
+    needleHistory: List<Int>
+) {
+    val textMeasurer = rememberTextMeasurer()
+
+    // Breathing Pacer Halo Animation (Inhale / Exhale ring)
+    val infiniteTransition = rememberInfiniteTransition(label = "breathHalo")
+    val breathScale by infiniteTransition.animateFloat(
+        initialValue = 0.80f,
+        targetValue = 1.25f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(4000), // 4 seconds breathing pace
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "breath"
+    )
+
+    val activeColor = when (target) {
+        NeurofeedbackTarget.CONCENTRATION -> Color(0xFFFFB300) // Gold
+        NeurofeedbackTarget.MEDITATION -> Color(0xFF10B981)   // Emerald Green
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(170.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF0F172A))
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+
+            val cx = w / 2f
+            val cy = h * 0.88f
+            val radius = w * 0.36f
+
+            // 1. Draw Dial Arc Color Zones (Red -> Amber -> Emerald)
+            val strokeWidth = 14f
+            val arcRect = Size(radius * 2f, radius * 2f)
+            val topLeft = Offset(cx - radius, cy - radius)
+
+            // Red Low Zone (0 to 40%) -> 180° to 252° (-180 to -108)
+            drawArc(
+                color = Color(0xFFEF4444),
+                startAngle = 180f,
+                sweepAngle = 72f,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcRect,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+
+            // Amber Mid Zone (40 to 70%) -> 252° to 306° (-108 to -54)
+            drawArc(
+                color = Color(0xFFF59E0B),
+                startAngle = 252f,
+                sweepAngle = 54f,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcRect,
+                style = Stroke(width = strokeWidth)
+            )
+
+            // Emerald High Zone (70 to 100%) -> 306° to 360° (-54 to 0)
+            drawArc(
+                color = Color(0xFF10B981),
+                startAngle = 306f,
+                sweepAngle = 54f,
+                useCenter = false,
+                topLeft = topLeft,
+                size = arcRect,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+            )
+
+            // 2. Draw Ticks & Numeric Readouts
+            val tickValues = listOf(0, 20, 40, 60, 80, 100)
+            tickValues.forEach { tVal ->
+                val angleDeg = 180f + (tVal / 100f) * 180f
+                val rad = Math.toRadians(angleDeg.toDouble())
+
+                val innerR = radius - 20f
+                val outerR = radius - 6f
+
+                val x1 = cx + (cos(rad) * innerR).toFloat()
+                val y1 = cy + (sin(rad) * innerR).toFloat()
+                val x2 = cx + (cos(rad) * outerR).toFloat()
+                val y2 = cy + (sin(rad) * outerR).toFloat()
+
+                drawLine(
+                    color = Color(0xFF94A3B8),
+                    start = Offset(x1, y1),
+                    end = Offset(x2, y2),
+                    strokeWidth = 3f
+                )
+
+                // Label Text
+                val tx = cx + (cos(rad) * (radius - 34f)).toFloat()
+                val ty = cy + (sin(rad) * (radius - 34f)).toFloat()
+
+                val textLayout = textMeasurer.measure(
+                    text = "$tVal",
+                    style = TextStyle(
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFCBD5E1),
+                        fontFamily = FontFamily.Monospace
+                    )
+                )
+
+                drawText(
+                    textLayoutResult = textLayout,
+                    topLeft = Offset(
+                        tx - (textLayout.size.width / 2f),
+                        ty - (textLayout.size.height / 2f)
+                    )
+                )
+            }
+
+            // 3. Motion Blur / Ghost Needles Trail (Rémanence des dernières secondes)
+            val historySize = needleHistory.size
+            needleHistory.forEachIndexed { idx, prevScore ->
+                val alpha = ((idx + 1).toFloat() / historySize.toFloat()) * 0.40f
+                val ghostAngleDeg = 180f + (prevScore.coerceIn(0, 100) / 100f) * 180f
+                val ghostRad = Math.toRadians(ghostAngleDeg.toDouble())
+
+                val needleLen = radius - 25f
+                val nx = cx + (cos(ghostRad) * needleLen).toFloat()
+                val ny = cy + (sin(ghostRad) * needleLen).toFloat()
+
+                drawLine(
+                    color = activeColor.copy(alpha = alpha),
+                    start = Offset(cx, cy),
+                    end = Offset(nx, ny),
+                    strokeWidth = 3f
+                )
+            }
+
+            // 4. Primary Active Needle
+            val currentAngleDeg = 180f + (score.coerceIn(0, 100) / 100f) * 180f
+            val currentRad = Math.toRadians(currentAngleDeg.toDouble())
+            val needleLen = radius - 22f
+
+            val nx = cx + (cos(currentRad) * needleLen).toFloat()
+            val ny = cy + (sin(currentRad) * needleLen).toFloat()
+
+            // Main Needle Line
+            drawLine(
+                color = activeColor,
+                start = Offset(cx, cy),
+                end = Offset(nx, ny),
+                strokeWidth = 5f,
+                cap = StrokeCap.Round
+            )
+
+            // 5. Breathing Pacer Ring (Cercle de respiration autour du pivot)
+            drawCircle(
+                color = activeColor.copy(alpha = 0.25f),
+                radius = 24f * breathScale,
+                center = Offset(cx, cy)
+            )
+
+            // Pivot Center Cap
+            drawCircle(
+                color = Color.White,
+                radius = 10f,
+                center = Offset(cx, cy)
+            )
+            drawCircle(
+                color = activeColor,
+                radius = 6f,
+                center = Offset(cx, cy)
+            )
+
+            // 6. Digital Center Readout
+            val digitalText = "$score%"
+            val digLayout = textMeasurer.measure(
+                text = digitalText,
+                style = TextStyle(
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = activeColor,
+                    fontFamily = FontFamily.Monospace
+                )
+            )
+            drawText(
+                textLayoutResult = digLayout,
+                topLeft = Offset(
+                    cx - (digLayout.size.width / 2f),
+                    cy - radius * 0.45f
+                )
+            )
         }
     }
 }

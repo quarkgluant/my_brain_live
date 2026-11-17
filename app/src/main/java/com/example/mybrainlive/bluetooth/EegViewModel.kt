@@ -20,6 +20,11 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.util.ArrayDeque
 
+enum class AudioBiofeedbackMode(val label: String) {
+    CONTINUOUS("🔉 Son Continu (Pitch Interactif)"),
+    CHIME("🔔 Carillon Périodique (Seuil)")
+}
+
 data class EegUiState(
     val connectionState: BluetoothConnectionState = BluetoothConnectionState.Disconnected,
     val pairedDevices: List<EegDevice> = emptyList(),
@@ -47,6 +52,7 @@ data class EegUiState(
     // Neurofeedback Target & Sound
     val neurofeedbackTarget: NeurofeedbackTarget = NeurofeedbackTarget.MEDITATION,
     val audioFeedbackEnabled: Boolean = false,
+    val audioBiofeedbackMode: AudioBiofeedbackMode = AudioBiofeedbackMode.CONTINUOUS,
     val meditationSampleThreshold: Int = 60,   // eSense >= seuil => échantillon "méditatif/concentré"
     val meditationPercentThreshold: Int = 70,  // % requis sur la fenêtre pour déclencher le son
     val meditationWindowPercent: Float = 0f,   // % actuel d'échantillons qualifiés (30 dernières s)
@@ -262,13 +268,22 @@ class EegViewModel(application: Application) : AndroidViewModel(application) {
         addLog("Mode Neurofeedback activé : ${target.label}")
     }
 
+    fun setAudioBiofeedbackMode(mode: AudioBiofeedbackMode) {
+        _uiState.value = _uiState.value.copy(audioBiofeedbackMode = mode)
+        if (mode == AudioBiofeedbackMode.CHIME) {
+            MeditationTonePlayer.stopContinuousTone()
+        }
+        addLog("Mode sonore configuré sur : ${mode.label}")
+    }
+
     fun toggleAudioFeedback() {
         val enabled = !_uiState.value.audioFeedbackEnabled
         if (!enabled) {
             meditationWindow.clear()
+            MeditationTonePlayer.stopContinuousTone()
         }
         _uiState.value = _uiState.value.copy(audioFeedbackEnabled = enabled)
-        addLog(if (enabled) "Retour sonore de méditation activé." else "Retour sonore de méditation désactivé.")
+        addLog(if (enabled) "Biofeedback sonore activé." else "Biofeedback sonore désactivé.")
     }
 
     fun setMeditationSampleThreshold(threshold: Int) {
