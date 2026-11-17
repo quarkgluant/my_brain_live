@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.BluetoothConnected
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.FilterList
@@ -109,6 +110,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -1805,6 +1807,7 @@ fun AiMultiProviderPage(
     viewModel: EegViewModel
 ) {
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     var inputMessageText by remember { mutableStateOf("") }
 
     LazyColumn(
@@ -1946,14 +1949,76 @@ fun AiMultiProviderPage(
                                 }
                             } else {
                                 val currentKey = uiState.aiApiKeys[currentProvider].orEmpty()
-                                OutlinedTextField(
-                                    value = currentKey,
-                                    onValueChange = { viewModel.setAiApiKey(currentProvider, it) },
-                                    label = { Text("Clé API (${currentProvider.name})") },
-                                    placeholder = { Text("sk-...") },
+
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            text = "💡 ÉTAPES DE CONNEXION (${currentProvider.displayName}) :",
+                                            fontWeight = FontWeight.Bold,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontSize = 10.sp
+                                        )
+                                        Text(
+                                            text = "1. Cliquez sur 'Connexion Web / API Key' ci-dessus pour ouvrir le site ${currentProvider.displayName}.\n2. Créez et copiez votre clé API sur le site Web.\n3. Cliquez sur 'Coller' ci-dessous pour insérer votre clé API.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontSize = 10.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    singleLine = true
-                                )
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    OutlinedTextField(
+                                        value = currentKey,
+                                        onValueChange = { viewModel.setAiApiKey(currentProvider, it) },
+                                        label = { Text("Clé API (${currentProvider.name})") },
+                                        placeholder = { Text("Collez votre clé API ici...") },
+                                        modifier = Modifier.weight(1f),
+                                        singleLine = true
+                                    )
+
+                                    Button(
+                                        onClick = {
+                                            val clipText = clipboardManager.getText()?.text
+                                            if (!clipText.isNullOrBlank()) {
+                                                viewModel.setAiApiKey(currentProvider, clipText.toString().trim())
+                                            }
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
+                                    ) {
+                                        Icon(Icons.Default.ContentPaste, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Coller", fontSize = 11.sp)
+                                    }
+                                }
+
+                                if (currentKey.isNotBlank()) {
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = Color(0xFF1B3A2A),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(
+                                            text = "✅ Clé API configurée (${currentKey.take(6)}...${currentKey.takeLast(4)})",
+                                            color = Color(0xFF4ADE80),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
