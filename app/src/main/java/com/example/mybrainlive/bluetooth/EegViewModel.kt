@@ -220,7 +220,8 @@ class EegViewModel(application: Application) : AndroidViewModel(application) {
         val now = System.currentTimeMillis()
 
         val isNeuroSkyDevice = telemetry?.deviceType == EegDeviceType.MINDWAVE_MOBILE ||
-                telemetry?.deviceType == EegDeviceType.BRAINLINK_LITE
+                telemetry?.deviceType == EegDeviceType.BRAINLINK_LITE ||
+                telemetry?.deviceType == EegDeviceType.GENERIC
 
         if (telemetry != null && isNeuroSkyDevice && telemetry.isHeadsetConnected) {
             val metricValue = when (state.neurofeedbackTarget) {

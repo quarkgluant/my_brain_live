@@ -73,7 +73,7 @@ object EducationalTopics {
             "🧘 Pour obtenir une mesure optimale : installez-vous confortablement, détendez vos muscles faciaux et la mâchoire, et observez comment la courbe se stabilise !"
         ),
         intermediateSteps = listOf(
-            "L'onde brute correspond au signal électroencéphalographique non filtré capté par l'électrode frontale (ex: FP1). L'amplitude varie généralement entre -200 µV et +200 µV à une fréquence d'échantillonnage de 512 Hz.",
+            "L'onde brute correspond au signal électroencéphalographique non filtré capté sur le front (bandeau frontal à 3 électrodes FP1/FPz/FP2 pour BrainLink Lite, FP1 + clip oreille A1 pour MindWave, ou FPz fronto-médian + clip oreille A1 pour le capteur générique). L'amplitude varie généralement entre -200 µV et +200 µV à une fréquence d'échantillonnage de 512 Hz.",
             "⚡ Gestion des artefacts : Les potentiels électromyographiques (EMG, contraction de la mâchoire) et électro-oculographiques (EOG, clignements) ont des amplitudes 5 à 10 fois supérieures au signal cérébral.",
             "📊 Transformation mathématique : Le signal brut temporel (µV) est découpé en fenêtres glissantes d'une seconde pour alimenter la Transformée de Fourier Rapide (FFT) qui extrait la puissance des bandes de fréquences (Delta, Theta, Alpha, Beta, Gamma)."
         ),

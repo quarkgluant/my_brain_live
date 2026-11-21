@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mybrainlive.audio.MeditationTonePlayer
 import com.example.mybrainlive.bluetooth.AudioBiofeedbackMode
+import com.example.mybrainlive.bluetooth.BluetoothConnectionState
 import com.example.mybrainlive.bluetooth.EegDeviceType
 import com.example.mybrainlive.bluetooth.EegTelemetry
 import com.example.mybrainlive.bluetooth.EegUiState
@@ -92,8 +93,9 @@ data class BrainNodePosition(
 
 object Standard1020Nodes {
     val NODES = listOf(
-        BrainNodePosition("FP1", "Frontal Pole Gauche", 0.38f, 0.20f),
-        BrainNodePosition("FP2", "Frontal Pole Droit", 0.62f, 0.20f),
+        BrainNodePosition("FP1", "Frontal Pole Gauche", 0.36f, 0.21f),
+        BrainNodePosition("FPz", "Frontal Pole Médian", 0.50f, 0.17f),
+        BrainNodePosition("FP2", "Frontal Pole Droit", 0.64f, 0.21f),
         BrainNodePosition("F3", "Frontal Gauche", 0.32f, 0.35f),
         BrainNodePosition("Fz", "Frontal Médian (Focus)", 0.50f, 0.35f),
         BrainNodePosition("F4", "Frontal Droit", 0.68f, 0.35f),
@@ -119,6 +121,15 @@ fun InteractiveBrainMapCard(
     var isComparisonMode by remember { mutableStateOf(false) }
 
     val telemetry = uiState.latestTelemetry
+    val connectedDeviceType = (uiState.connectionState as? BluetoothConnectionState.Connected)?.let {
+        EegDeviceType.detectType(it.deviceName)
+    }
+    val currentDeviceType = telemetry?.deviceType
+        ?: connectedDeviceType
+        ?: uiState.selectedFilter
+        ?: uiState.pairedDevices.firstOrNull { it.deviceType == EegDeviceType.BRAINLINK_LITE }?.deviceType
+        ?: uiState.scannedDevices.firstOrNull { it.deviceType == EegDeviceType.BRAINLINK_LITE }?.deviceType
+        ?: EegDeviceType.BRAINLINK_LITE
     val target = uiState.neurofeedbackTarget
     val score = when (target) {
         NeurofeedbackTarget.MEDITATION -> telemetry?.meditation ?: 0
@@ -266,7 +277,7 @@ fun InteractiveBrainMapCard(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         TopographicalBrainCanvas(
-                            deviceType = telemetry?.deviceType ?: EegDeviceType.MINDWAVE_MOBILE,
+                            deviceType = currentDeviceType,
                             target = target,
                             score = baselineScore,
                             selectedNode = selectedNodeForPlux,
@@ -294,7 +305,7 @@ fun InteractiveBrainMapCard(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         TopographicalBrainCanvas(
-                            deviceType = telemetry?.deviceType ?: EegDeviceType.MINDWAVE_MOBILE,
+                            deviceType = currentDeviceType,
                             target = target,
                             score = score,
                             selectedNode = selectedNodeForPlux,
@@ -305,7 +316,7 @@ fun InteractiveBrainMapCard(
                 }
             } else {
                 TopographicalBrainCanvas(
-                    deviceType = telemetry?.deviceType ?: EegDeviceType.MINDWAVE_MOBILE,
+                    deviceType = currentDeviceType,
                     target = target,
                     score = score,
                     selectedNode = selectedNodeForPlux,
@@ -322,13 +333,15 @@ fun InteractiveBrainMapCard(
             ) {
                 Column(modifier = Modifier.padding(10.dp)) {
                     Text(
-                        text = when (telemetry?.deviceType) {
-                            EegDeviceType.MINDWAVE_MOBILE, EegDeviceType.BRAINLINK_LITE ->
-                                "📍 Emplacement Fixe : Électrode frontale en FP1 (Front Gauche) + Clip de référence oreille A1."
-                            EegDeviceType.PLUX, EegDeviceType.GENERIC ->
+                        text = when (currentDeviceType) {
+                            EegDeviceType.BRAINLINK_LITE ->
+                                "📍 Emplacement Fixe (BrainLink Lite) : 3 capteurs frontaux sur le bandeau — FP1 (EEG actif), FPz (Masse / GND) et FP2 (Référence), sans clip d'oreille."
+                            EegDeviceType.MINDWAVE_MOBILE ->
+                                "📍 Emplacement Fixe (MindWave) : Électrode frontale en FP1 (Front Gauche) + Clip de référence oreille A1."
+                            EegDeviceType.GENERIC ->
+                                "📍 Emplacement Fixe (Capteur Générique SPP) : Électrode fronto-médiane en FPz (Front Médian) + Clip de référence oreille A1."
+                            EegDeviceType.PLUX ->
                                 "📍 Emplacement Libre (BITalino / PLUX) : Touchez un nœud sur la carte pour repositionner le canal ($selectedNodeForPlux)."
-                            null ->
-                                "📍 Carte Topographique 10-20 : Touchez un nœud pour explorer les régions corticales."
                         },
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -403,13 +416,25 @@ fun TopographicalBrainCanvas(
                     val nx = node.normX * w
                     val ny = node.normY * h
 
-                    val isActiveElectrode = when (deviceType) {
-                        EegDeviceType.MINDWAVE_MOBILE, EegDeviceType.BRAINLINK_LITE -> node.name == "FP1"
-                        EegDeviceType.PLUX, EegDeviceType.GENERIC -> node.name == selectedNode
+                    val isPrimaryEeg = when (deviceType) {
+                        EegDeviceType.MINDWAVE_MOBILE -> node.name == "FP1"
+                        EegDeviceType.BRAINLINK_LITE -> node.name == "FP1" || node.name == "FPz" || node.name == "FP2"
+                        EegDeviceType.GENERIC -> node.name == "FPz"
+                        EegDeviceType.PLUX -> node.name == selectedNode
                     }
 
-                    val intensity = if (isActiveElectrode) (score / 100f).coerceIn(0.1f, 1f) else 0.15f
-                    val radius = (w * 0.30f * intensity) * (if (isActiveElectrode) pulseScale else 1f)
+                    val sensorWeight = when {
+                        deviceType == EegDeviceType.BRAINLINK_LITE && (node.name == "FPz" || node.name == "FP2") -> 0.75f
+                        isPrimaryEeg -> 1.0f
+                        else -> 0f
+                    }
+
+                    val intensity = if (isPrimaryEeg) {
+                        ((score / 100f).coerceIn(0.15f, 1f) * sensorWeight).coerceAtLeast(0.15f)
+                    } else {
+                        0.15f
+                    }
+                    val radius = (w * 0.28f * intensity) * (if (isPrimaryEeg) pulseScale else 1f)
 
                     val heatColors = when (target) {
                         NeurofeedbackTarget.CONCENTRATION -> listOf(
@@ -451,25 +476,59 @@ fun TopographicalBrainCanvas(
                 strokeWidth = 2f
             )
 
+            // Draw frontal headband arc connecting FP1 - FPz - FP2 for BrainLink Lite
+            if (deviceType == EegDeviceType.BRAINLINK_LITE) {
+                val fp1 = Standard1020Nodes.NODES.first { it.name == "FP1" }
+                val fpz = Standard1020Nodes.NODES.first { it.name == "FPz" }
+                val fp2 = Standard1020Nodes.NODES.first { it.name == "FP2" }
+                val bandPath = Path().apply {
+                    moveTo(fp1.normX * w, fp1.normY * h)
+                    quadraticTo(
+                        fpz.normX * w, (fpz.normY - 0.03f) * h,
+                        fp2.normX * w, fp2.normY * h
+                    )
+                }
+                drawPath(
+                    path = bandPath,
+                    color = Color(0xFFFFB300).copy(alpha = 0.65f),
+                    style = Stroke(width = 4f, cap = StrokeCap.Round)
+                )
+            }
+
             Standard1020Nodes.NODES.forEach { node ->
                 val nx = node.normX * w
                 val ny = node.normY * h
 
                 val isActiveElectrode = when (deviceType) {
-                    EegDeviceType.MINDWAVE_MOBILE, EegDeviceType.BRAINLINK_LITE -> node.name == "FP1"
-                    EegDeviceType.PLUX, EegDeviceType.GENERIC -> node.name == selectedNode
+                    EegDeviceType.MINDWAVE_MOBILE -> node.name == "FP1"
+                    EegDeviceType.BRAINLINK_LITE -> node.name == "FP1" || node.name == "FPz" || node.name == "FP2"
+                    EegDeviceType.GENERIC -> node.name == "FPz"
+                    EegDeviceType.PLUX -> node.name == selectedNode
                 }
 
+                val isReferenceOrGround = when (deviceType) {
+                    EegDeviceType.MINDWAVE_MOBILE, EegDeviceType.GENERIC -> node.name == "A1"
+                    EegDeviceType.BRAINLINK_LITE -> node.name == "FPz" || node.name == "FP2"
+                    EegDeviceType.PLUX -> false
+                }
+
+                val isHighlighted = isActiveElectrode || isReferenceOrGround
+
                 drawCircle(
-                    color = if (isActiveElectrode) Color.White else Color(0xFF000000).copy(alpha = 0.6f),
-                    radius = if (isActiveElectrode) 8f else 5f,
+                    color = if (isHighlighted) Color.White else Color(0xFF000000).copy(alpha = 0.6f),
+                    radius = if (isHighlighted) 8f else 5f,
                     center = Offset(nx, ny)
                 )
 
-                if (isActiveElectrode) {
+                if (isHighlighted) {
+                    val innerColor = when {
+                        deviceType == EegDeviceType.BRAINLINK_LITE -> Color(0xFFFFB300) // Gold contact (FP1, FPz, FP2)
+                        isReferenceOrGround -> Color(0xFF38BDF8) // Ear clip reference (A1)
+                        else -> Color(0xFF10B981) // Active EEG (FP1 / Selected)
+                    }
                     drawCircle(
-                        color = Color(0xFF10B981),
-                        radius = 4f,
+                        color = innerColor,
+                        radius = 4.5f,
                         center = Offset(nx, ny)
                     )
                 }
@@ -477,9 +536,9 @@ fun TopographicalBrainCanvas(
                 val textLayout = textMeasurer.measure(
                     text = node.name,
                     style = TextStyle(
-                        fontSize = (if (isActiveElectrode) 9 else 7).sp,
+                        fontSize = (if (isHighlighted) 9 else 7).sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isActiveElectrode) Color.White else Color(0xFF94A3B8),
+                        color = if (isHighlighted) Color.White else Color(0xFF94A3B8),
                         fontFamily = FontFamily.Monospace
                     )
                 )
@@ -488,7 +547,7 @@ fun TopographicalBrainCanvas(
                     textLayoutResult = textLayout,
                     topLeft = Offset(
                         nx - (textLayout.size.width / 2f),
-                        ny + (if (isActiveElectrode) 10f else 6f)
+                        ny + (if (isHighlighted) 10f else 6f)
                     )
                 )
             }
