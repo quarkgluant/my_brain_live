@@ -5,122 +5,60 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- CORTEX / BRAIN TOP VIEW (VUE DE DESSUS) - BOLD BLACK OUTLINE & CONVOLUTIONS -->
+    <!-- VARIATION 1 : NÉON CYBER-NEURO (Bicolore Cyan / Magenta + Impulsion EEG Dorée) -->
 
-    <!-- Left Hemisphere Outer Contour -->
+    <!-- Left Hemisphere Outer Contour (Electric Cyan #00E5FF) -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M 54,30 C 42,30 26,38 24,54 C 22,70 32,86 42,88 C 48,89 52,87 54,84"
-        android:strokeColor="#111827"
-        android:strokeWidth="3.8"
+        android:pathData="M 51,26 C 37,26 26,36 26,52 C 26,68 36,80 47,80 C 50,80 51,78 51,74 L 51,26"
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="3.4"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
 
-    <!-- Right Hemisphere Outer Contour -->
+    <!-- Left Hemisphere Inner Convolutions (#38BDF8) -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M 54,30 C 66,30 82,38 84,54 C 86,70 76,86 66,88 C 60,89 56,87 54,84"
-        android:strokeColor="#111827"
-        android:strokeWidth="3.8"
+        android:pathData="M 33,39 C 39,36 44,41 48,38 M 29,50 C 36,47 41,54 48,50 M 30,62 C 37,59 42,66 48,63 M 36,72 C 41,70 45,74 48,72"
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="2.6"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
 
-    <!-- Central Longitudinal Fissure (Scissure interhémisphérique) -->
+    <!-- Right Hemisphere Outer Contour (Neon Magenta #E879F9) -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M 54,30 L 54,84"
-        android:strokeColor="#111827"
-        android:strokeWidth="3.8"
-        android:strokeLineCap="round" />
+        android:pathData="M 57,26 C 71,26 82,36 82,52 C 82,68 72,80 61,80 C 58,80 57,78 57,74 L 57,26"
+        android:strokeColor="#E879F9"
+        android:strokeWidth="3.4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 
-    <!-- Left Hemisphere Convolutions (Circonvolutions) -->
+    <!-- Right Hemisphere Inner Convolutions (#C084FC) -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M 32,40 C 38,44 46,38 51,43"
-        android:strokeColor="#111827"
-        android:strokeWidth="3.2"
-        android:strokeLineCap="round" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M 26,50 C 34,48 42,56 51,53"
-        android:strokeColor="#111827"
-        android:strokeWidth="3.2"
-        android:strokeLineCap="round" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M 26,62 C 34,58 42,68 51,64"
-        android:strokeColor="#111827"
-        android:strokeWidth="3.2"
-        android:strokeLineCap="round" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M 29,72 C 36,68 44,78 51,74"
-        android:strokeColor="#111827"
-        android:strokeWidth="3.2"
-        android:strokeLineCap="round" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M 38,82 C 44,80 48,85 52,83"
-        android:strokeColor="#111827"
-        android:strokeWidth="3.2"
-        android:strokeLineCap="round" />
+        android:pathData="M 75,39 C 69,36 64,41 60,38 M 79,50 C 72,47 67,54 60,50 M 78,62 C 71,59 66,66 60,63 M 72,72 C 67,70 63,74 60,72"
+        android:strokeColor="#C084FC"
+        android:strokeWidth="2.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 
-    <!-- Right Hemisphere Convolutions (Circonvolutions) -->
+    <!-- Central Live EEG Pulse Wave - Outer Golden Halo -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M 76,40 C 70,44 62,38 57,43"
-        android:strokeColor="#111827"
-        android:strokeWidth="3.2"
-        android:strokeLineCap="round" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M 82,50 C 74,48 66,56 57,53"
-        android:strokeColor="#111827"
-        android:strokeWidth="3.2"
-        android:strokeLineCap="round" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M 82,62 C 74,58 66,68 57,64"
-        android:strokeColor="#111827"
-        android:strokeWidth="3.2"
-        android:strokeLineCap="round" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M 79,72 C 72,68 64,78 57,74"
-        android:strokeColor="#111827"
-        android:strokeWidth="3.2"
-        android:strokeLineCap="round" />
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M 70,82 C 64,80 60,85 56,83"
-        android:strokeColor="#111827"
-        android:strokeWidth="3.2"
-        android:strokeLineCap="round" />
+        android:pathData="M 16,54 L 31,54 L 36,46 L 42,63 L 49,35 L 55,71 L 61,41 L 67,60 L 72,50 L 76,54 L 92,54"
+        android:strokeColor="#59FBBF24"
+        android:strokeWidth="7.0"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 
-    <!-- 3 ONDES SINUSOÏDALES DE COULEURS DIFFÉRENTES AU DESSUS DU CORTEX -->
-
-    <!-- Wave 1: Cyan / Bright Blue (#00B0FF) -->
+    <!-- Central Live EEG Pulse Wave - Core Bright Gold (#FDE047) -->
     <path
         android:fillColor="#00000000"
-        android:pathData="M 16,36 C 24,24 32,48 40,36 C 48,24 56,48 64,36 C 72,24 80,48 88,36 C 92,30 94,36 96,36"
-        android:strokeColor="#00B0FF"
+        android:pathData="M 16,54 L 31,54 L 36,46 L 42,63 L 49,35 L 55,71 L 61,41 L 67,60 L 72,50 L 76,54 L 92,54"
+        android:strokeColor="#FDE047"
         android:strokeWidth="3.2"
-        android:strokeLineCap="round" />
-
-    <!-- Wave 2: Purple / Magenta (#D500F9) -->
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M 14,46 C 22,34 30,58 38,46 C 46,34 54,58 62,46 C 70,34 78,58 86,46 C 91,39 94,46 96,46"
-        android:strokeColor="#D500F9"
-        android:strokeWidth="3.2"
-        android:strokeLineCap="round" />
-
-    <!-- Wave 3: Bright Orange (#FF6D00) -->
-    <path
-        android:fillColor="#00000000"
-        android:pathData="M 16,56 C 24,44 32,68 40,56 C 48,44 56,68 64,56 C 72,44 80,68 88,56 C 92,50 95,56 96,56"
-        android:strokeColor="#FF6D00"
-        android:strokeWidth="3.2"
-        android:strokeLineCap="round" />
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 
 </vector>
