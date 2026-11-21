@@ -1872,12 +1872,13 @@ fun AiMultiProviderPage(
                                     Text(
                                         text = when (provider) {
                                             AiProvider.LOCAL -> "🖥️ Local"
+                                            AiProvider.GOOGLE -> "🔵 Gemini"
                                             AiProvider.ANTHROPIC -> "🟧 Claude"
                                             AiProvider.OPENAI -> "🟩 OpenAI"
                                             AiProvider.MISTRAL -> "🟧 Mistral"
                                         },
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp,
+                                        fontSize = 10.sp,
                                         maxLines = 1,
                                         softWrap = false,
                                         color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface

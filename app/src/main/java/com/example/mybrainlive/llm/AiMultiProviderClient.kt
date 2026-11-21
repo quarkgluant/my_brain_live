@@ -18,6 +18,7 @@ enum class AiProvider(
     val defaultModel: String
 ) {
     LOCAL("Local (LM Studio / Ollama)", "Exécution 100% hors-ligne sur votre PC local", "http://10.0.2.2:1234", "local-model"),
+    GOOGLE("Google (Gemini 2.0 / 1.5)", "Derniers modèles Google Gemini 2.0 Flash & 1.5 Pro", "https://aistudio.google.com/app/apikey", "gemini-1.5-flash"),
     ANTHROPIC("Anthropic (Claude)", "Modèles d'analyse avancés Claude 3.5 Sonnet", "https://console.anthropic.com/", "claude-3-5-sonnet-20241022"),
     OPENAI("OpenAI (ChatGPT)", "Modèles GPT-4o & GPT-4o-mini pour la santé", "https://platform.openai.com/api-keys", "gpt-4o-mini"),
     MISTRAL("Mistral AI", "IA européenne haute performance (Mistral Large/Small)", "https://console.mistral.ai/", "mistral-small-latest")
@@ -54,13 +55,20 @@ class AiMultiProviderClient {
         conversationHistory: List<ChatMessage>
     ): String = withContext(Dispatchers.IO) {
 
-        // Build contextual system prompt based on active data source (live or recorded session)
         val systemPrompt = buildSystemPrompt(dataSource, telemetry, recordedSamples)
 
         return@withContext when (provider) {
             AiProvider.LOCAL -> callOpenAiCompatibleApi(
                 url = "http://${hostIp.trim().removePrefix("http://").removePrefix("https://").trimEnd('/')}:$port/v1/chat/completions",
                 authHeader = null,
+                model = provider.defaultModel,
+                systemPrompt = systemPrompt,
+                userMessage = userMessage,
+                history = conversationHistory
+            )
+            AiProvider.GOOGLE -> callOpenAiCompatibleApi(
+                url = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+                authHeader = "Bearer ${apiKey.trim()}",
                 model = provider.defaultModel,
                 systemPrompt = systemPrompt,
                 userMessage = userMessage,
